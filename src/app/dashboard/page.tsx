@@ -456,7 +456,6 @@ export default function Dashboard() {
 
       <div className="p-6 max-w-7xl mx-auto">
         {/* #region Filters Section */}
-
         <Card className="mb-6 bg-black/20 backdrop-blur-sm border-white/10">
           <CardHeader>
             <CardTitle className="text-white flex items-center">
