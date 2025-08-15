@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { googleMapsLoader } from '@/lib/google-maps-loader';
+import { useEffect, useRef, useState } from "react";
+import { googleMapsLoader } from "@/lib/google-maps-loader";
 
 // Type declarations at the top
 declare global {
@@ -16,14 +16,13 @@ interface Location {
   lng: number;
   title: string;
   description?: string;
-  type?: 'desired' | 'charging' | 'submission';
+  type?: "desired" | "charging" | "submission";
 }
 
 interface GoogleMapsProps {
   locations: Location[];
   center?: { lat: number; lng: number };
   zoom?: number;
-  height?: string;
   onMapClick?: (lat: number, lng: number) => void;
   showHeatmap?: boolean;
   className?: string;
@@ -36,11 +35,10 @@ export default function GoogleMaps({
   locations = [],
   center = MEDELLIN_CENTER,
   zoom = 12,
-  height = "400px",
   onMapClick,
   showHeatmap = false,
-  className = ""
-}: GoogleMapsProps) {
+  className = "",
+}: Omit<GoogleMapsProps, "height">) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
@@ -64,8 +62,8 @@ export default function GoogleMaps({
       // Check if API key is configured
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-      if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
-        console.warn('Google Maps API key not found. Showing demo map.');
+      if (!apiKey || apiKey === "your_google_maps_api_key_here") {
+        console.warn("Google Maps API key not found. Showing demo map.");
         showDemoMap();
         return;
       }
@@ -80,111 +78,111 @@ export default function GoogleMaps({
           styles: [
             // Dark theme for the map
             {
-              "elementType": "geometry",
-              "stylers": [{ "color": "#212121" }]
+              elementType: "geometry",
+              stylers: [{ color: "#212121" }],
             },
             {
-              "elementType": "labels.icon",
-              "stylers": [{ "visibility": "off" }]
+              elementType: "labels.icon",
+              stylers: [{ visibility: "off" }],
             },
             {
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#757575" }]
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#757575" }],
             },
             {
-              "elementType": "labels.text.stroke",
-              "stylers": [{ "color": "#212121" }]
+              elementType: "labels.text.stroke",
+              stylers: [{ color: "#212121" }],
             },
             {
-              "featureType": "administrative",
-              "elementType": "geometry",
-              "stylers": [{ "color": "#757575" }]
+              featureType: "administrative",
+              elementType: "geometry",
+              stylers: [{ color: "#757575" }],
             },
             {
-              "featureType": "administrative.country",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#9e9e9e" }]
+              featureType: "administrative.country",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#9e9e9e" }],
             },
             {
-              "featureType": "administrative.land_parcel",
-              "stylers": [{ "visibility": "off" }]
+              featureType: "administrative.land_parcel",
+              stylers: [{ visibility: "off" }],
             },
             {
-              "featureType": "administrative.locality",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#bdbdbd" }]
+              featureType: "administrative.locality",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#bdbdbd" }],
             },
             {
-              "featureType": "poi",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#757575" }]
+              featureType: "poi",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#757575" }],
             },
             {
-              "featureType": "poi.park",
-              "elementType": "geometry",
-              "stylers": [{ "color": "#181818" }]
+              featureType: "poi.park",
+              elementType: "geometry",
+              stylers: [{ color: "#181818" }],
             },
             {
-              "featureType": "poi.park",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#616161" }]
+              featureType: "poi.park",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#616161" }],
             },
             {
-              "featureType": "poi.park",
-              "elementType": "labels.text.stroke",
-              "stylers": [{ "color": "#1b1b1b" }]
+              featureType: "poi.park",
+              elementType: "labels.text.stroke",
+              stylers: [{ color: "#1b1b1b" }],
             },
             {
-              "featureType": "road",
-              "elementType": "geometry.fill",
-              "stylers": [{ "color": "#2c2c2c" }]
+              featureType: "road",
+              elementType: "geometry.fill",
+              stylers: [{ color: "#2c2c2c" }],
             },
             {
-              "featureType": "road",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#8a8a8a" }]
+              featureType: "road",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#8a8a8a" }],
             },
             {
-              "featureType": "road.arterial",
-              "elementType": "geometry",
-              "stylers": [{ "color": "#373737" }]
+              featureType: "road.arterial",
+              elementType: "geometry",
+              stylers: [{ color: "#373737" }],
             },
             {
-              "featureType": "road.highway",
-              "elementType": "geometry",
-              "stylers": [{ "color": "#3c3c3c" }]
+              featureType: "road.highway",
+              elementType: "geometry",
+              stylers: [{ color: "#3c3c3c" }],
             },
             {
-              "featureType": "road.highway.controlled_access",
-              "elementType": "geometry",
-              "stylers": [{ "color": "#4e4e4e" }]
+              featureType: "road.highway.controlled_access",
+              elementType: "geometry",
+              stylers: [{ color: "#4e4e4e" }],
             },
             {
-              "featureType": "road.local",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#616161" }]
+              featureType: "road.local",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#616161" }],
             },
             {
-              "featureType": "transit",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#757575" }]
+              featureType: "transit",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#757575" }],
             },
             {
-              "featureType": "water",
-              "elementType": "geometry",
-              "stylers": [{ "color": "#000000" }]
+              featureType: "water",
+              elementType: "geometry",
+              stylers: [{ color: "#000000" }],
             },
             {
-              "featureType": "water",
-              "elementType": "labels.text.fill",
-              "stylers": [{ "color": "#3d3d3d" }]
-            }
-          ]
+              featureType: "water",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#3d3d3d" }],
+            },
+          ],
         });
 
         // Add click listener if provided
         if (onMapClick) {
-          newMap.addListener('click', (event: google.maps.MapMouseEvent) => {
+          newMap.addListener("click", (event: google.maps.MapMouseEvent) => {
             if (event.latLng) {
               onMapClick(event.latLng.lat(), event.latLng.lng());
             }
@@ -194,7 +192,7 @@ export default function GoogleMaps({
         setMap(newMap);
       }
     } catch (err) {
-      console.error('Error loading Google Maps:', err);
+      console.error("Error loading Google Maps:", err);
       setError(`Error loading Google Maps: ${err}`);
       showDemoMap();
     } finally {
@@ -211,28 +209,34 @@ export default function GoogleMaps({
     if (!map || !window.google) return;
 
     // Clear existing markers
-    markers.forEach(marker => marker.setMap(null));
+    markers.forEach((marker) => marker.setMap(null));
 
     // Create new markers
-    const newMarkers = locations.map(location => {
+    const newMarkers = locations.map((location) => {
       const marker = new window.google!.maps.Marker({
         position: { lat: location.lat, lng: location.lng },
         map: map,
         title: location.title,
-        icon: getMarkerIcon(location.type)
+        icon: getMarkerIcon(location.type),
       });
 
       // Add info window
       const infoWindow = new window.google!.maps.InfoWindow({
         content: `
           <div style="color: black; padding: 8px;">
-            <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">${location.title}</h3>
-            ${location.description ? `<p style="margin: 0; font-size: 12px;">${location.description}</p>` : ''}
+            <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">${
+              location.title
+            }</h3>
+            ${
+              location.description
+                ? `<p style="margin: 0; font-size: 12px;">${location.description}</p>`
+                : ""
+            }
           </div>
-        `
+        `,
       });
 
-      marker.addListener('click', () => {
+      marker.addListener("click", () => {
         infoWindow.open(map, marker);
       });
 
@@ -242,23 +246,27 @@ export default function GoogleMaps({
     setMarkers(newMarkers);
 
     // If showing heatmap, create heat map
-    if (showHeatmap && locations.length > 0 && window.google?.maps?.visualization) {
-      const heatmapData = locations.map(location =>
-        new window.google!.maps.LatLng(location.lat, location.lng)
+    if (
+      showHeatmap &&
+      locations.length > 0 &&
+      window.google?.maps?.visualization
+    ) {
+      const heatmapData = locations.map(
+        (location) => new window.google!.maps.LatLng(location.lat, location.lng)
       );
 
       new window.google!.maps.visualization.HeatmapLayer({
         data: heatmapData,
         map: map,
         radius: 20,
-        opacity: 0.6
+        opacity: 0.6,
       });
     }
 
     // Adjust map bounds to fit all markers
     if (newMarkers.length > 0 && window.google) {
       const bounds = new window.google.maps.LatLngBounds();
-      newMarkers.forEach(marker => {
+      newMarkers.forEach((marker) => {
         const position = marker.getPosition();
         if (position) {
           bounds.extend(position);
@@ -277,30 +285,39 @@ export default function GoogleMaps({
   };
 
   const getMarkerIcon = (type?: string) => {
-    const baseUrl = 'data:image/svg+xml;charset=UTF-8,';
+    const baseUrl = "data:image/svg+xml;charset=UTF-8,";
 
     switch (type) {
-      case 'desired':
-        return baseUrl + encodeURIComponent(`
+      case "desired":
+        return (
+          baseUrl +
+          encodeURIComponent(`
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#3b82f6"/>
             <circle cx="12" cy="9" r="2.5" fill="white"/>
           </svg>
-        `);
-      case 'charging':
-        return baseUrl + encodeURIComponent(`
+        `)
+        );
+      case "charging":
+        return (
+          baseUrl +
+          encodeURIComponent(`
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#10b981"/>
             <path d="M12 6l-2 4h1.5v3l2-4H12V6z" fill="white"/>
           </svg>
-        `);
+        `)
+        );
       default:
-        return baseUrl + encodeURIComponent(`
+        return (
+          baseUrl +
+          encodeURIComponent(`
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#ef4444"/>
             <circle cx="12" cy="9" r="2.5" fill="white"/>
           </svg>
-        `);
+        `)
+        );
     }
   };
 
@@ -308,15 +325,31 @@ export default function GoogleMaps({
     return (
       <div
         className={`relative bg-slate-800 rounded-lg border border-slate-600 ${className}`}
-        style={{ height }}
       >
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-gray-400">
-            <svg className="w-16 h-16 mx-auto mb-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            <svg
+              className="w-16 h-16 mx-auto mb-4 text-blue-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              />
             </svg>
-            <h3 className="text-lg font-semibold text-white mb-2">Demo Map - Medellín</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Demo Map - Medellín
+            </h3>
             <p className="text-sm mb-2">Google Maps API Key Required</p>
             <div className="text-xs space-y-1">
               <p>Locations: {locations.length}</p>
@@ -350,7 +383,7 @@ export default function GoogleMaps({
   }
 
   return (
-    <div className={`relative ${className}`} style={{ height }}>
+    <div className={`relative ${className}`}>
       {isLoading && (
         <div className="absolute inset-0 bg-slate-800 rounded-lg flex items-center justify-center z-10">
           <div className="text-center text-gray-400">
@@ -359,11 +392,7 @@ export default function GoogleMaps({
           </div>
         </div>
       )}
-      <div
-        ref={mapRef}
-        className="w-full h-full rounded-lg"
-        style={{ height }}
-      />
+      <div ref={mapRef} className="w-full h-full rounded-lg" />
     </div>
   );
 }

@@ -427,12 +427,12 @@ export default function Dashboard() {
     <div className="min-h-screen gradient-bg">
       {/* Header */}
       <header className="p-4 border-b border-white/10">
-        <div className="flex justify-between items-center max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mx-auto">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <span className="text-black font-bold text-sm">OG</span>
             </div>
-            <span className="text-white font-semibold">Dashboard - Fase2</span>
+            <span className="text-white font-semibold">Dashboard</span>
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-right">
@@ -454,7 +454,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 mx-auto">
         {/* #region Filters Section */}
         <Card className="mb-6 bg-black/20 backdrop-blur-sm border-white/10">
           <CardHeader>
@@ -547,6 +547,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Main Content Grid */}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Sidebar - Charts and Data */}
           <div className="lg:col-span-1 space-y-6">
@@ -669,7 +670,7 @@ export default function Dashboard() {
           </div>
 
           {/* Center - Heatmap */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-2 row-span-2 col-start-2">
             <Card className="bg-black/20 backdrop-blur-sm border-white/10 h-full">
               <CardHeader>
                 <CardTitle className="text-white">
@@ -677,31 +678,42 @@ export default function Dashboard() {
                 </CardTitle>
                 <CardDescription className="text-gray-300">
                   Concentración de solicitudes y puntos de carga
+                  {/* Legend */}
+                  <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                    <div className="flex items-center justify-center space-x-1">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-300">Baja</span>
+                    </div>
+                    <div className="flex items-center justify-center space-x-1">
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <span className="text-gray-300">Media</span>
+                    </div>
+                    <div className="flex items-center justify-center space-x-1">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span className="text-gray-300">Alta</span>
+                    </div>
+                  </div>
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="h-[calc(100%-110px)]">
                 <GoogleMaps
-                  locations={generateDemoLocations()}
-                  height="400px"
+                  locations={
+                    submissionsData
+                      ? submissionsData.locations
+                          .filter((loc) => loc.latitude && loc.longitude)
+                          .map((loc) => ({
+                            id: loc.id.toString(),
+                            lat: Number(loc.latitude),
+                            lng: Number(loc.longitude),
+                            title: loc.identifier,
+                            description: loc.address,
+                            type: "submission",
+                          }))
+                      : []
+                  }
                   showHeatmap={true}
-                  className="rounded-lg border border-white/20"
+                  className="rounded-lg border border-white/20 h-full"
                 />
-
-                {/* Legend */}
-                <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                  <div className="flex items-center justify-center space-x-1">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-gray-300">Baja</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-1">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <span className="text-gray-300">Media</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-1">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    <span className="text-gray-300">Alta</span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
