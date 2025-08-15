@@ -28,9 +28,21 @@ export function useAuth() {
   // Check if user is authenticated on mount
   const checkAuth = useCallback(async () => {
     try {
+      // Get token from localStorage if available
+      const token = localStorage.getItem('auth-token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add Authorization header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/auth/verify', {
         method: 'GET',
         credentials: 'include', // Include cookies
+        headers,
       });
 
       if (response.ok) {
@@ -82,6 +94,30 @@ export function useAuth() {
       const data = await response.json();
 
       if (data.success && data.user) {
+        console.log('Login response successful, checking cookies...');
+        console.log('Cookies after login:', document.cookie);
+        console.log('Auth token present after login:', document.cookie.includes('auth-token'));
+
+        // Fallback: If server cookie wasn't set and we have token in response, set it manually
+        if (!document.cookie.includes('auth-token') && data.token) {
+          console.log('Setting auth token manually via JavaScript...');
+
+          // Try multiple approaches to set the cookie
+          const maxAge = 7 * 24 * 60 * 60; // 7 days in seconds
+
+          // Approach 1: Simple cookie
+          document.cookie = `auth-token=${data.token}; path=/; max-age=${maxAge}`;
+
+          // Approach 2: With SameSite
+          document.cookie = `auth-token=${data.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+
+          // Approach 3: Store in localStorage as backup
+          localStorage.setItem('auth-token', data.token);
+
+          console.log('Manual cookie set, checking again:', document.cookie.includes('auth-token'));
+          console.log('Token stored in localStorage:', !!localStorage.getItem('auth-token'));
+        }
+
         setAuthState({
           user: data.user,
           isLoading: false,
@@ -163,6 +199,10 @@ export function useAuth() {
 
   // Check authentication on mount
   useEffect(() => {
+    // Debug: Check if auth token is available in browser cookies
+    console.log('Browser cookies available:', document.cookie);
+    console.log('Auth token in browser cookies:', document.cookie.includes('auth-token'));
+
     checkAuth();
   }, [checkAuth]);
 

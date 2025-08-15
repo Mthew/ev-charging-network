@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -40,6 +41,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function Home() {
+  const router = useRouter();
   const [desiredLocations, setDesiredLocations] = useState<Array<{
     id: string;
     identifier: string;
@@ -197,7 +199,7 @@ export default function Home() {
             variant="ghost"
             size="sm"
             className="text-white hover:text-primary"
-            onClick={() => window.open('/dashboard', '_blank')}
+            onClick={() => router.push('/dashboard')}
           >
             <User className="w-4 h-4 mr-2" />
             Dashboard
@@ -465,7 +467,7 @@ export default function Home() {
               </div>
               <p className="section-description">
                 Con esta información crearemos un plano interactivo para seleccionar una nueva ubicación
-                para tus necesidades de recarga. 
+                para tus necesidades de recarga.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

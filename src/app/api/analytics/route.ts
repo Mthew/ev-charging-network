@@ -5,8 +5,14 @@ import { getUserFromRequest, hasRole } from '@/lib/auth';
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
+    const authCookie = request.cookies.get('auth-token');
+    console.log('Analytics API - Auth cookie present:', !!authCookie);
+
     const user = getUserFromRequest(request);
+    console.log('Analytics API - User found:', !!user);
+
     if (!user) {
+      console.log('Analytics API - No user found, returning 401');
       return NextResponse.json(
         { success: false, message: 'Authentication required' },
         { status: 401 }
@@ -83,8 +89,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
+    const authCookie = request.cookies.get('auth-token');
+    console.log('Analytics POST API - Auth cookie present:', !!authCookie);
+
     const user = getUserFromRequest(request);
+    console.log('Analytics POST API - User found:', !!user);
+    console.log('USEr AUTH => ', user);
+
     if (!user) {
+      console.log('Analytics POST API - No user found, returning 401');
       return NextResponse.json(
         { success: false, message: 'Authentication required' },
         { status: 401 }

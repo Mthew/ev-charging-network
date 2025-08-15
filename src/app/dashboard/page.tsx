@@ -3,17 +3,58 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { MapPin, Filter, BarChart3, PieChart as PieChartIcon, TrendingUp, Users, Car, Zap, LogOut, Eye, EyeOff, AlertCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+} from "recharts";
+import {
+  MapPin,
+  Filter,
+  BarChart3,
+  PieChart as PieChartIcon,
+  TrendingUp,
+  Users,
+  Car,
+  Zap,
+  LogOut,
+  Eye,
+  EyeOff,
+  AlertCircle,
+} from "lucide-react";
 import GoogleMaps from "@/components/GoogleMaps";
 import { useAuth } from "@/hooks/useAuth";
 
 interface AnalyticsData {
   vehicleTypes: Array<{ vehicle_type: string; count: number }>;
   usageTypes: Array<{ usage_type: string; count: number }>;
-  chargingLocations: Array<{ primary_charging_location: string; count: number }>;
+  chargingLocations: Array<{
+    primary_charging_location: string;
+    count: number;
+  }>;
   kmRanges: Array<{ average_kms_per_day: string; count: number }>;
   desiredLocationCounts: Array<{ identifier: string; count: number }>;
   monthlyData: Array<{ month: string; count: number }>;
@@ -21,7 +62,14 @@ interface AnalyticsData {
   totalLocations: number;
 }
 
-const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+const COLORS = [
+  "#3b82f6",
+  "#ef4444",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#06b6d4",
+];
 
 // Generate demo locations for Medellín heatmap
 const generateDemoLocations = () => {
@@ -32,7 +80,7 @@ const generateDemoLocations = () => {
     lng: number;
     title: string;
     description: string;
-    type: 'submission';
+    type: "submission";
   }> = [];
 
   // Generate sample locations around Medellín
@@ -44,7 +92,7 @@ const generateDemoLocations = () => {
     { name: "Sabaneta", lat: 6.1513, lng: -75.6163, count: 6 },
     { name: "Itagüí", lat: 6.1655, lng: -75.6344, count: 10 },
     { name: "Bello", lat: 6.3369, lng: -75.5539, count: 14 },
-    { name: "Medellín Norte", lat: 6.2940, lng: -75.5400, count: 9 },
+    { name: "Medellín Norte", lat: 6.294, lng: -75.54, count: 9 },
   ];
 
   areas.forEach((area, areaIndex) => {
@@ -59,7 +107,7 @@ const generateDemoLocations = () => {
         lng,
         title: `${area.name} - Punto ${i + 1}`,
         description: `Solicitud de estación de carga en ${area.name}`,
-        type: 'submission' as const
+        type: "submission" as const,
       });
     }
   });
@@ -68,11 +116,19 @@ const generateDemoLocations = () => {
 };
 
 export default function Dashboard() {
-  const { user, isLoading: authLoading, isAuthenticated, login, logout } = useAuth();
+  const {
+    user,
+    isLoading: authLoading,
+    isAuthenticated,
+    login,
+    logout,
+  } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [loginForm, setLoginForm] = useState({ identifier: '', password: '' });
-  const [loginError, setLoginError] = useState('');
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
+  const [loginError, setLoginError] = useState("");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
+    null
+  );
   const [submissionsData, setSubmissionsData] = useState<{
     submissions: Array<{
       id: number;
@@ -94,72 +150,135 @@ export default function Dashboard() {
     }>;
   } | null>(null);
   const [activeFilters, setActiveFilters] = useState({
-    locationType: 'all',
-    vehicleType: 'all',
-    usageType: 'all'
+    locationType: "all",
+    vehicleType: "all",
+    usageType: "all",
   });
   const [isLoading, setIsLoading] = useState(false);
-
-
 
   // Real JWT authentication
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError('');
+    setLoginError("");
 
     if (!loginForm.identifier || !loginForm.password) {
-      setLoginError('Please fill in all fields');
+      setLoginError("Please fill in all fields");
       return;
     }
 
     const result = await login({
       identifier: loginForm.identifier,
-      password: loginForm.password
+      password: loginForm.password,
     });
 
     if (!result.success) {
       setLoginError(result.message);
     } else {
-      // Authentication successful, analytics will load automatically
-      loadAnalyticsData();
+      // Authentication successful, analytics will load automatically via useEffect
+      // Don't call loadAnalyticsData() here to avoid race condition with cookie setting
+      console.log("Login successful, auth state updated");
     }
   };
 
-  const loadAnalyticsData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      // Load analytics data
-      const analyticsResponse = await fetch('/api/analytics', {
-        credentials: 'include', // Include cookies for authentication
-      });
-      const analyticsResult = await analyticsResponse.json();
-      if (analyticsResult.success) {
-        setAnalyticsData(analyticsResult.data);
-      } else if (analyticsResponse.status === 401) {
-        // Token expired or invalid, logout user
-        logout();
-        return;
-      }
+  const loadAnalyticsData = useCallback(
+    async (retryCount = 0) => {
+      console.log(`Loading analytics data (attempt ${retryCount + 1})...`);
+      setIsLoading(true);
+      try {
+        // Get token from localStorage
+        const token = localStorage.getItem("auth-token");
+        const headers: HeadersInit = {
+          "Cache-Control": "no-cache",
+        };
 
-      // Load submissions data for map
-      const submissionsResponse = await fetch('/api/analytics?type=submissions', {
-        credentials: 'include', // Include cookies for authentication
-      });
-      const submissionsResult = await submissionsResponse.json();
-      if (submissionsResult.success) {
-        setSubmissionsData(submissionsResult.data);
+        // Add Authorization header if token exists
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+          console.log("Adding Authorization header with token");
+        }
+
+        // Load analytics data
+        const analyticsResponse = await fetch("/api/analytics", {
+          credentials: "include", // Include cookies for authentication
+          headers,
+        });
+
+        console.log("Analytics response status:", analyticsResponse.status);
+
+        const analyticsResult = await analyticsResponse.json();
+        if (analyticsResult.success) {
+          console.log("Analytics data loaded successfully");
+          setAnalyticsData(analyticsResult.data);
+        } else if (analyticsResponse.status === 401) {
+          // If this is within retry limit, wait longer and try again
+          if (retryCount < 3) {
+            const delay = (retryCount + 1) * 1000; // 1s, 2s, 3s delays
+            console.log(
+              `Analytics 401, retrying in ${delay}ms... (attempt ${
+                retryCount + 1
+              }/3)`
+            );
+            setTimeout(() => {
+              loadAnalyticsData(retryCount + 1);
+            }, delay);
+            return;
+          } else {
+            // Token actually expired or invalid after multiple retries, logout user
+            console.log("Authentication failed after all retries, logging out");
+            logout();
+            return;
+          }
+        }
+
+        // Load submissions data for map
+        const submissionsResponse = await fetch(
+          "/api/analytics?type=submissions",
+          {
+            credentials: "include", // Include cookies for authentication
+            headers,
+          }
+        );
+
+        console.log("Submissions response status:", submissionsResponse.status);
+
+        const submissionsResult = await submissionsResponse.json();
+        if (submissionsResult.success) {
+          console.log("Submissions data loaded successfully");
+          setSubmissionsData(submissionsResult.data);
+        }
+      } catch (error) {
+        console.error("Error loading analytics:", error);
+
+        // If there's a network error and we haven't retried much, try again
+        if (retryCount < 2) {
+          console.log(
+            `Network error, retrying in 2 seconds... (attempt ${
+              retryCount + 1
+            }/2)`
+          );
+          setTimeout(() => {
+            loadAnalyticsData(retryCount + 1);
+          }, 2000);
+          return;
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [logout]);
+    },
+    [logout]
+  );
 
   // Load analytics data when user becomes authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      loadAnalyticsData();
+      // Longer delay to ensure cookie is properly set after login
+      console.log("User authenticated, loading analytics in 1.5 seconds...");
+      const timeoutId = setTimeout(() => {
+        console.log("Loading analytics data now...");
+        loadAnalyticsData();
+      }, 1500);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [isAuthenticated, user, loadAnalyticsData]);
 
@@ -170,15 +289,26 @@ export default function Dashboard() {
       const filtersForAPI = Object.fromEntries(
         Object.entries(activeFilters).map(([key, value]) => [
           key,
-          value === 'all' ? '' : value
+          value === "all" ? "" : value,
         ])
       );
 
-      const response = await fetch('/api/analytics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Include cookies for authentication
-        body: JSON.stringify({ filters: filtersForAPI })
+      // Get token from localStorage
+      const token = localStorage.getItem("auth-token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      // Add Authorization header if token exists
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch("/api/analytics", {
+        method: "POST",
+        headers,
+        credentials: "include", // Include cookies for authentication
+        body: JSON.stringify({ filters: filtersForAPI }),
       });
       const result = await response.json();
       if (result.success) {
@@ -189,7 +319,7 @@ export default function Dashboard() {
         return;
       }
     } catch (error) {
-      console.error('Error applying filters:', error);
+      console.error("Error applying filters:", error);
     } finally {
       setIsLoading(false);
     }
@@ -209,6 +339,8 @@ export default function Dashboard() {
     );
   }
 
+  //#region Authentication Login Form
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -218,7 +350,9 @@ export default function Dashboard() {
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
                 <span className="text-black font-bold">OG</span>
               </div>
-              <span className="text-white font-semibold text-xl">Dashboard</span>
+              <span className="text-white font-semibold text-xl">
+                Dashboard
+              </span>
             </div>
             <CardTitle className="text-white">Acceso Administrativo</CardTitle>
             <CardDescription className="text-gray-300">
@@ -232,7 +366,9 @@ export default function Dashboard() {
                   type="text"
                   placeholder="Usuario o Email"
                   value={loginForm.identifier}
-                  onChange={(e) => setLoginForm({...loginForm, identifier: e.target.value})}
+                  onChange={(e) =>
+                    setLoginForm({ ...loginForm, identifier: e.target.value })
+                  }
                   className="custom-input"
                   required
                 />
@@ -242,7 +378,9 @@ export default function Dashboard() {
                   type={showPassword ? "text" : "password"}
                   placeholder="Contraseña"
                   value={loginForm.password}
-                  onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                  onChange={(e) =>
+                    setLoginForm({ ...loginForm, password: e.target.value })
+                  }
                   className="custom-input pr-10"
                   required
                 />
@@ -269,7 +407,7 @@ export default function Dashboard() {
                 className="w-full bg-primary hover:bg-primary/90"
                 disabled={authLoading}
               >
-                {authLoading ? 'Iniciando...' : 'Iniciar Sesión'}
+                {authLoading ? "Iniciando..." : "Iniciar Sesión"}
               </Button>
               <div className="text-xs text-gray-400 text-center space-y-1">
                 <p>Credenciales demo:</p>
@@ -282,6 +420,8 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  //#endregion
 
   return (
     <div className="min-h-screen gradient-bg">
@@ -298,7 +438,7 @@ export default function Dashboard() {
             <div className="text-right">
               <p className="text-white text-sm font-medium">{user?.username}</p>
               <p className="text-gray-300 text-xs capitalize">
-                {user?.role === 'admin' ? 'Administrador' : 'Usuario'}
+                {user?.role === "admin" ? "Administrador" : "Usuario"}
               </p>
             </div>
             <Button
@@ -315,7 +455,8 @@ export default function Dashboard() {
       </header>
 
       <div className="p-6 max-w-7xl mx-auto">
-        {/* Filters Section */}
+        {/* #region Filters Section */}
+
         <Card className="mb-6 bg-black/20 backdrop-blur-sm border-white/10">
           <CardHeader>
             <CardTitle className="text-white flex items-center">
@@ -329,10 +470,14 @@ export default function Dashboard() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="text-white text-sm mb-2 block">Tipo de Ubicación</label>
+                <label className="text-white text-sm mb-2 block">
+                  Tipo de Ubicación
+                </label>
                 <Select
                   value={activeFilters.locationType}
-                  onValueChange={(value) => setActiveFilters({...activeFilters, locationType: value})}
+                  onValueChange={(value) =>
+                    setActiveFilters({ ...activeFilters, locationType: value })
+                  }
                 >
                   <SelectTrigger className="custom-input">
                     <SelectValue placeholder="Todos" />
@@ -347,10 +492,14 @@ export default function Dashboard() {
                 </Select>
               </div>
               <div>
-                <label className="text-white text-sm mb-2 block">Tipo de Vehículo</label>
+                <label className="text-white text-sm mb-2 block">
+                  Tipo de Vehículo
+                </label>
                 <Select
                   value={activeFilters.vehicleType}
-                  onValueChange={(value) => setActiveFilters({...activeFilters, vehicleType: value})}
+                  onValueChange={(value) =>
+                    setActiveFilters({ ...activeFilters, vehicleType: value })
+                  }
                 >
                   <SelectTrigger className="custom-input">
                     <SelectValue placeholder="Todos" />
@@ -365,10 +514,14 @@ export default function Dashboard() {
                 </Select>
               </div>
               <div>
-                <label className="text-white text-sm mb-2 block">Tipo de Uso</label>
+                <label className="text-white text-sm mb-2 block">
+                  Tipo de Uso
+                </label>
                 <Select
                   value={activeFilters.usageType}
-                  onValueChange={(value) => setActiveFilters({...activeFilters, usageType: value})}
+                  onValueChange={(value) =>
+                    setActiveFilters({ ...activeFilters, usageType: value })
+                  }
                 >
                   <SelectTrigger className="custom-input">
                     <SelectValue placeholder="Todos" />
@@ -383,7 +536,11 @@ export default function Dashboard() {
                 </Select>
               </div>
             </div>
-            <Button onClick={applyFilters} disabled={isLoading} className="bg-primary hover:bg-primary/90">
+            <Button
+              onClick={applyFilters}
+              disabled={isLoading}
+              className="bg-primary hover:bg-primary/90"
+            >
               <Filter className="w-4 h-4 mr-2" />
               Aplicar Filtros
             </Button>
@@ -405,7 +562,11 @@ export default function Dashboard() {
                         {analyticsData?.totalSubmissions || 0}
                       </p>
                       <p className="text-xs text-gray-400">
-                        Registros en BD: {analyticsData?.vehicleTypes.reduce((acc, item) => acc + item.count, 0) || 0}
+                        Registros en BD:{" "}
+                        {analyticsData?.vehicleTypes.reduce(
+                          (acc, item) => acc + item.count,
+                          0
+                        ) || 0}
                       </p>
                     </div>
                     <Users className="w-8 h-8 text-primary" />
@@ -416,7 +577,9 @@ export default function Dashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-300 text-sm">Ubicaciones Deseadas</p>
+                      <p className="text-gray-300 text-sm">
+                        Ubicaciones Deseadas
+                      </p>
                       <p className="text-2xl font-bold text-white">
                         {analyticsData?.totalLocations || 0}
                       </p>
@@ -436,7 +599,9 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-white text-sm font-medium">Base de Datos Conectada</span>
+                    <span className="text-white text-sm font-medium">
+                      Base de Datos Conectada
+                    </span>
                   </div>
                   <div className="text-xs text-gray-400">
                     MySQL • Tiempo real
@@ -467,7 +632,10 @@ export default function Dashboard() {
                         nameKey="vehicle_type"
                       >
                         {analyticsData.vehicleTypes.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -487,8 +655,11 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height={150}>
                     <BarChart data={analyticsData.kmRanges}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                      <XAxis dataKey="average_kms_per_day" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
-                      <YAxis tick={{ fill: '#9CA3AF' }} />
+                      <XAxis
+                        dataKey="average_kms_per_day"
+                        tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                      />
+                      <YAxis tick={{ fill: "#9CA3AF" }} />
                       <Tooltip />
                       <Bar dataKey="count" fill="#3b82f6" />
                     </BarChart>
@@ -502,7 +673,9 @@ export default function Dashboard() {
           <div className="lg:col-span-1">
             <Card className="bg-black/20 backdrop-blur-sm border-white/10 h-full">
               <CardHeader>
-                <CardTitle className="text-white">Mapa de Calor - Medellín</CardTitle>
+                <CardTitle className="text-white">
+                  Mapa de Calor - Medellín
+                </CardTitle>
                 <CardDescription className="text-gray-300">
                   Concentración de solicitudes y puntos de carga
                 </CardDescription>
@@ -544,9 +717,16 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-3">
                   {analyticsData?.chargingLocations.map((location, index) => (
-                    <div key={index} className="flex justify-between items-center">
-                      <span className="text-gray-300 capitalize">{location.primary_charging_location}</span>
-                      <span className="text-white font-semibold">{location.count}</span>
+                    <div
+                      key={index}
+                      className="flex justify-between items-center"
+                    >
+                      <span className="text-gray-300 capitalize">
+                        {location.primary_charging_location}
+                      </span>
+                      <span className="text-white font-semibold">
+                        {location.count}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -571,9 +751,14 @@ export default function Dashboard() {
                         dataKey="count"
                         nameKey="identifier"
                       >
-                        {analyticsData.desiredLocationCounts.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                        {analyticsData.desiredLocationCounts.map(
+                          (entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          )
+                        )}
                       </Pie>
                       <Tooltip />
                     </PieChart>
@@ -613,10 +798,15 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={analyticsData.monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="month" tick={{ fill: '#9CA3AF' }} />
-                    <YAxis tick={{ fill: '#9CA3AF' }} />
+                    <XAxis dataKey="month" tick={{ fill: "#9CA3AF" }} />
+                    <YAxis tick={{ fill: "#9CA3AF" }} />
                     <Tooltip />
-                    <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               )}
@@ -632,18 +822,21 @@ export default function Dashboard() {
               <div className="space-y-4 text-gray-300">
                 <div className="p-3 bg-white/5 rounded-lg">
                   <p className="text-sm">
-                    Ubicaciones cargadas por el mismo usuario y con identificadores que
-                    permiten generar mapas de calor de intención.
+                    Ubicaciones cargadas por el mismo usuario y con
+                    identificadores que permiten generar mapas de calor de
+                    intención.
                   </p>
                 </div>
                 <div className="p-3 bg-white/5 rounded-lg">
                   <p className="text-sm">
-                    Coloración se determina por los records sub totales aplicados a los filtros.
+                    Coloración se determina por los records sub totales
+                    aplicados a los filtros.
                   </p>
                 </div>
                 <div className="p-3 bg-white/5 rounded-lg">
                   <p className="text-sm">
-                    Hacer lista de marcas con modelos y tamaños tentativos de batería.
+                    Hacer lista de marcas con modelos y tamaños tentativos de
+                    batería.
                   </p>
                 </div>
               </div>
