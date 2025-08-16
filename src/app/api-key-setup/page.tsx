@@ -1,15 +1,28 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, XCircle, AlertCircle, Key, MapPin, Copy } from 'lucide-react';
-import GoogleMaps from '@/components/GoogleMaps';
-import GooglePlacesAutocomplete from '@/components/GooglePlacesAutocomplete';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Key,
+  MapPin,
+  Copy,
+} from "lucide-react";
+import GoogleMaps from "@/components/GoogleMaps";
+import GooglePlacesAutocomplete from "@/components/GooglePlacesAutocomplete";
 
 export default function ApiKeySetupPage() {
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState("");
   const [testResults, setTestResults] = useState<{
     mapsApi: boolean | null;
     placesApi: boolean | null;
@@ -17,25 +30,24 @@ export default function ApiKeySetupPage() {
   }>({
     mapsApi: null,
     placesApi: null,
-    geocodingApi: null
+    geocodingApi: null,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [testAddress, setTestAddress] = useState('');
+  const [testAddress, setTestAddress] = useState("");
 
   const currentApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
-    if (currentApiKey && currentApiKey !== 'your_google_maps_api_key_here') {
+    if (currentApiKey && currentApiKey !== "your_google_maps_api_key_here") {
       setApiKey(currentApiKey);
       testApiKey(currentApiKey);
     }
   }, [currentApiKey]);
 
   const testApiKey = async (keyToTest: string) => {
-    if (!keyToTest || keyToTest === 'your_google_maps_api_key_here') return;
+    if (!keyToTest || keyToTest === "your_google_maps_api_key_here") return;
 
     setIsLoading(true);
-
 
     try {
       // Test Geocoding API (this will validate that the API key works)
@@ -46,28 +58,27 @@ export default function ApiKeySetupPage() {
         );
         const geocodeData = await geocodeResponse.json();
 
-        if (geocodeData.status === 'OK') {
+        if (geocodeData.status === "OK") {
           // If geocoding works, assume Maps API will work too
-          setTestResults(prev => ({
+          setTestResults((prev) => ({
             ...prev,
             geocodingApi: true,
             mapsApi: true,
-            placesApi: true
+            placesApi: true,
           }));
         } else {
-          setTestResults(prev => ({
+          setTestResults((prev) => ({
             ...prev,
             geocodingApi: false,
             mapsApi: false,
-            placesApi: false
+            placesApi: false,
           }));
         }
       } catch (error) {
-        setTestResults(prev => ({ ...prev, geocodingApi: false }));
+        setTestResults((prev) => ({ ...prev, geocodingApi: false }));
       }
-
     } catch (error) {
-      console.error('Error testing API key:', error);
+      console.error("Error testing API key:", error);
     } finally {
       setIsLoading(false);
     }
@@ -87,19 +98,23 @@ DB_NAME=ev_charging_network
 JWT_SECRET=your_jwt_secret_here`;
 
     navigator.clipboard.writeText(envContent);
-    alert('Environment configuration copied to clipboard! Paste it into your .env.local file.');
+    alert(
+      "Environment configuration copied to clipboard! Paste it into your .env.local file."
+    );
   };
 
   const getStatusIcon = (status: boolean | null) => {
-    if (status === null) return <AlertCircle className="w-5 h-5 text-gray-400" />;
-    if (status === true) return <CheckCircle className="w-5 h-5 text-green-500" />;
+    if (status === null)
+      return <AlertCircle className="w-5 h-5 text-gray-400" />;
+    if (status === true)
+      return <CheckCircle className="w-5 h-5 text-green-500" />;
     return <XCircle className="w-5 h-5 text-red-500" />;
   };
 
   const getStatusText = (status: boolean | null) => {
-    if (status === null) return 'Not tested';
-    if (status === true) return 'Working';
-    return 'Error';
+    if (status === null) return "Not tested";
+    if (status === true) return "Working";
+    return "Error";
   };
 
   return (
@@ -128,7 +143,8 @@ JWT_SECRET=your_jwt_secret_here`;
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                 <span className="text-gray-300">API Key Configured</span>
                 <div className="flex items-center space-x-2">
-                  {currentApiKey && currentApiKey !== 'your_google_maps_api_key_here' ? (
+                  {currentApiKey &&
+                  currentApiKey !== "your_google_maps_api_key_here" ? (
                     <>
                       <CheckCircle className="w-5 h-5 text-green-500" />
                       <span className="text-green-400">Yes</span>
@@ -142,33 +158,45 @@ JWT_SECRET=your_jwt_secret_here`;
                 </div>
               </div>
 
-              {currentApiKey && currentApiKey !== 'your_google_maps_api_key_here' && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-2 bg-white/5 rounded">
-                    <span className="text-gray-300 text-sm">Maps JavaScript API</span>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(testResults.mapsApi)}
-                      <span className="text-sm">{getStatusText(testResults.mapsApi)}</span>
+              {currentApiKey &&
+                currentApiKey !== "your_google_maps_api_key_here" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-white/5 rounded">
+                      <span className="text-gray-300 text-sm">
+                        Maps JavaScript API
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(testResults.mapsApi)}
+                        <span className="text-sm">
+                          {getStatusText(testResults.mapsApi)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-white/5 rounded">
+                      <span className="text-gray-300 text-sm">
+                        Geocoding API
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(testResults.geocodingApi)}
+                        <span className="text-sm">
+                          {getStatusText(testResults.geocodingApi)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-2 bg-white/5 rounded">
-                    <span className="text-gray-300 text-sm">Geocoding API</span>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(testResults.geocodingApi)}
-                      <span className="text-sm">{getStatusText(testResults.geocodingApi)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
             </div>
           </CardContent>
         </Card>
 
         {/* Setup Instructions */}
-        {(!currentApiKey || currentApiKey === 'your_google_maps_api_key_here') && (
+        {(!currentApiKey ||
+          currentApiKey === "your_google_maps_api_key_here") && (
           <Card className="mb-6 bg-black/20 backdrop-blur-sm border-white/10">
             <CardHeader>
-              <CardTitle className="text-white">📋 Setup Instructions</CardTitle>
+              <CardTitle className="text-white">
+                📋 Setup Instructions
+              </CardTitle>
               <CardDescription className="text-gray-300">
                 Follow these steps to get your Google Maps API key
               </CardDescription>
@@ -176,9 +204,20 @@ JWT_SECRET=your_jwt_secret_here`;
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
-                  <h4 className="text-white font-semibold">1. Google Cloud Console</h4>
+                  <h4 className="text-white font-semibold">
+                    1. Google Cloud Console
+                  </h4>
                   <ul className="text-sm text-gray-300 space-y-1 list-disc list-inside">
-                    <li>Go to <a href="https://console.cloud.google.com/" target="_blank" className="text-primary underline">Google Cloud Console</a></li>
+                    <li>
+                      Go to{" "}
+                      <a
+                        href="https://console.cloud.google.com/"
+                        target="_blank"
+                        className="text-primary underline"
+                      >
+                        Google Cloud Console
+                      </a>
+                    </li>
                     <li>Create or select a project</li>
                     <li>Enable billing (required for production)</li>
                   </ul>
@@ -194,12 +233,15 @@ JWT_SECRET=your_jwt_secret_here`;
               </div>
 
               <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                <h4 className="text-yellow-400 font-semibold mb-2">📖 Need detailed instructions?</h4>
+                <h4 className="text-yellow-400 font-semibold mb-2">
+                  📖 Need detailed instructions?
+                </h4>
                 <p className="text-yellow-300 text-sm mb-3">
-                  Check out our comprehensive setup guide with screenshots and step-by-step instructions.
+                  Check out our comprehensive setup guide with screenshots and
+                  step-by-step instructions.
                 </p>
                 <Button
-                  onClick={() => window.open('/GOOGLE_MAPS_SETUP.md', '_blank')}
+                  onClick={() => window.open("/GOOGLE_MAPS_SETUP.md", "_blank")}
                   variant="outline"
                   size="sm"
                   className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
@@ -251,7 +293,7 @@ JWT_SECRET=your_jwt_secret_here`;
         </Card>
 
         {/* Live Testing */}
-        {currentApiKey && currentApiKey !== 'your_google_maps_api_key_here' && (
+        {currentApiKey && currentApiKey !== "your_google_maps_api_key_here" && (
           <>
             <Card className="mb-6 bg-black/20 backdrop-blur-sm border-white/10">
               <CardHeader>
@@ -261,26 +303,29 @@ JWT_SECRET=your_jwt_secret_here`;
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <GoogleMaps
-                  locations={[
-                    {
-                      id: 'test',
-                      lat: 6.2442,
-                      lng: -75.5812,
-                      title: 'Test Location - Medellín',
-                      description: 'Testing Google Maps integration',
-                      type: 'submission'
-                    }
-                  ]}
-                  height="300px"
-                  className="rounded-lg border border-white/20"
-                />
+                <div className="h-96">
+                  <GoogleMaps
+                    locations={[
+                      {
+                        id: "test",
+                        lat: 6.2442,
+                        lng: -75.5812,
+                        title: "Test Location - Medellín",
+                        description: "Testing Google Maps integration",
+                        type: "submission",
+                      },
+                    ]}
+                    className="rounded-lg border border-white/20 h-full"
+                  />
+                </div>
               </CardContent>
             </Card>
 
             <Card className="mb-6 bg-black/20 backdrop-blur-sm border-white/10">
               <CardHeader>
-                <CardTitle className="text-white">📍 Address Autocomplete Test</CardTitle>
+                <CardTitle className="text-white">
+                  📍 Address Autocomplete Test
+                </CardTitle>
                 <CardDescription className="text-gray-300">
                   Test Places API integration
                 </CardDescription>
@@ -290,8 +335,10 @@ JWT_SECRET=your_jwt_secret_here`;
                   value={testAddress}
                   onChange={setTestAddress}
                   onPlaceSelect={(place) => {
-                    console.log('Place selected:', place);
-                    alert(`Selected: ${place.address}\nCoordinates: ${place.lat}, ${place.lng}`);
+                    console.log("Place selected:", place);
+                    alert(
+                      `Selected: ${place.address}\nCoordinates: ${place.lat}, ${place.lng}`
+                    );
                   }}
                   placeholder="Type an address in Colombia..."
                   className="custom-input"
@@ -304,13 +351,13 @@ JWT_SECRET=your_jwt_secret_here`;
         {/* Navigation */}
         <div className="text-center space-x-4">
           <Button
-            onClick={() => window.open('/', '_self')}
+            onClick={() => window.open("/", "_self")}
             className="bg-primary hover:bg-primary/90"
           >
             ← Back to Main App
           </Button>
           <Button
-            onClick={() => window.open('/test-maps', '_self')}
+            onClick={() => window.open("/test-maps", "_self")}
             variant="outline"
             className="border-white/20 text-white hover:bg-white/10"
           >

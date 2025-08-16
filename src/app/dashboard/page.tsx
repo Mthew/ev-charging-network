@@ -287,43 +287,63 @@ export default function Dashboard() {
   };
 
   const getMapLocations = (
-    data: any,
+    data: {
+      submissions: Array<{
+        id: number;
+        vehicle_type: string;
+        brand_model: string;
+        usage_type: string;
+        primary_charging_location: string;
+        created_at: string;
+        charging_latitude?: number;
+        charging_longitude?: number;
+        charging_address?: string;
+        [key: string]: unknown;
+      }>;
+      locations: Array<{
+        id: number;
+        submission_id: number;
+        identifier: string;
+        address: string;
+        latitude?: number;
+        longitude?: number;
+        created_at: string;
+      }>;
+    } | null,
     filter: "desired" | "submitted" | "all" = "all"
   ): Location[] => {
     const locations: Location[] = [];
 
     if (data) {
-      data.submissions &&
-        ["all", "submitted"].includes(filter) &&
+      if (data.submissions && ["all", "submitted"].includes(filter)) {
         locations.push(
           ...data.submissions
-            .filter(
-              (loc: any) => loc.charging_latitude && loc.charging_longitude
-            )
-            .map((loc: any) => ({
+            .filter((loc) => loc.charging_latitude && loc.charging_longitude)
+            .map((loc) => ({
               id: loc.id.toString(),
               lat: Number(loc.charging_latitude),
               lng: Number(loc.charging_longitude),
               title: loc.primary_charging_location,
-              description: loc.charging_address,
-              type: "charging",
+              description: loc.charging_address || "",
+              type: "charging" as const,
             }))
         );
+      }
 
-      data.locations &&
-        ["all", "desired"].includes(filter) &&
+      if (data.locations && ["all", "desired"].includes(filter)) {
         locations.push(
           ...data.locations
-            .filter((loc: any) => loc.latitude && loc.longitude)
-            .map((loc: any) => ({
+            .filter((loc) => loc.latitude && loc.longitude)
+            .map((loc) => ({
               id: loc.id.toString(),
               lat: Number(loc.latitude),
               lng: Number(loc.longitude),
               title: loc.identifier,
               description: loc.address,
-              type: "submission",
+              type: "submission" as const,
             }))
         );
+      }
     }
 
     return locations;
@@ -337,7 +357,7 @@ export default function Dashboard() {
   useEffect(() => {
     const applyLocationFilters = () => {
       if (submissionsData?.locations && submissionsData?.locations) {
-        let filtered = getMapLocations(submissionsData || []);
+        const filtered = getMapLocations(submissionsData || null);
         // Apply additional filtering logic here
         setFilteredLocations(() => filtered);
       }
@@ -347,12 +367,12 @@ export default function Dashboard() {
   }, [submissionsData]);
 
   const handlers = {
-    changeMapVisualization: (e: any) => {
-      const selectedFilter = e.target.value;
+    changeMapVisualization: (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedFilter = e.target.value as "desired" | "submitted" | "all";
       if (selectedFilter) {
         setMapVisualizationType(selectedFilter);
         setFilteredLocations(() =>
-          getMapLocations(submissionsData || [], selectedFilter)
+          getMapLocations(submissionsData || null, selectedFilter)
         );
       }
     },

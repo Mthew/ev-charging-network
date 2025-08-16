@@ -421,7 +421,7 @@ export async function getAnalyticsData(filters: {
 
     console.log("✅ Retrieved analytics data");
 
-    const getTotal = (result: any[]): number =>
+    const getTotal = (result: Array<{ total: number }>): number =>
       Array.isArray(result) &&
       result[0] &&
       typeof result[0] === "object" &&
@@ -436,8 +436,12 @@ export async function getAnalyticsData(filters: {
       kmRanges: kmRanges[0],
       desiredLocationCounts: desiredLocationCounts[0],
       monthlyData: monthlyData[0],
-      totalSubmissions: getTotal(totalSubmissionsResult[0] as any[]),
-      totalLocations: getTotal(totalLocationsResult[0] as any[]),
+      totalSubmissions: getTotal(
+        totalSubmissionsResult[0] as Array<{ total: number }>
+      ),
+      totalLocations: getTotal(
+        totalLocationsResult[0] as Array<{ total: number }>
+      ),
     };
   } catch (error) {
     console.error("❌ Error retrieving analytics data:", error);
