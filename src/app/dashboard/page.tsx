@@ -287,6 +287,7 @@ export default function Dashboard() {
   };
 
   const getMapLocations = (
+
     data: {
       submissions: Array<{
         id: number;
@@ -310,20 +311,24 @@ export default function Dashboard() {
         created_at: string;
       }>;
     } | null,
+
     filter: "desired" | "submitted" | "all" = "all"
   ): Location[] => {
     const locations: Location[] = [];
 
     if (data) {
+
       if (data.submissions && ["all", "submitted"].includes(filter)) {
         locations.push(
           ...data.submissions
             .filter((loc) => loc.charging_latitude && loc.charging_longitude)
             .map((loc) => ({
+
               id: loc.id.toString(),
               lat: Number(loc.charging_latitude),
               lng: Number(loc.charging_longitude),
               title: loc.primary_charging_location,
+
               description: loc.charging_address || "",
               type: "charging" as const,
             }))
@@ -335,15 +340,18 @@ export default function Dashboard() {
           ...data.locations
             .filter((loc) => loc.latitude && loc.longitude)
             .map((loc) => ({
+
               id: loc.id.toString(),
               lat: Number(loc.latitude),
               lng: Number(loc.longitude),
               title: loc.identifier,
               description: loc.address,
+
               type: "submission" as const,
             }))
         );
       }
+
     }
 
     return locations;
@@ -357,7 +365,9 @@ export default function Dashboard() {
   useEffect(() => {
     const applyLocationFilters = () => {
       if (submissionsData?.locations && submissionsData?.locations) {
+
         const filtered = getMapLocations(submissionsData || null);
+
         // Apply additional filtering logic here
         setFilteredLocations(() => filtered);
       }
@@ -367,12 +377,14 @@ export default function Dashboard() {
   }, [submissionsData]);
 
   const handlers = {
+
     changeMapVisualization: (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedFilter = e.target.value as "desired" | "submitted" | "all";
       if (selectedFilter) {
         setMapVisualizationType(selectedFilter);
         setFilteredLocations(() =>
           getMapLocations(submissionsData || null, selectedFilter)
+
         );
       }
     },

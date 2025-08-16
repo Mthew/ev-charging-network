@@ -48,9 +48,11 @@ const FormFieldItem = ({
   form,
   list,
 }: {
+
   name: keyof FormData;
   title: string;
   form: ReturnType<typeof useForm<FormData>>;
+
   list: readonly string[];
 }) => (
   <FormField

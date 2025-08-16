@@ -421,7 +421,9 @@ export async function getAnalyticsData(filters: {
 
     console.log("✅ Retrieved analytics data");
 
+
     const getTotal = (result: Array<{ total: number }>): number =>
+
       Array.isArray(result) &&
       result[0] &&
       typeof result[0] === "object" &&
@@ -442,6 +444,7 @@ export async function getAnalyticsData(filters: {
       totalLocations: getTotal(
         totalLocationsResult[0] as Array<{ total: number }>
       ),
+
     };
   } catch (error) {
     console.error("❌ Error retrieving analytics data:", error);
