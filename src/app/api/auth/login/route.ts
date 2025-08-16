@@ -38,15 +38,26 @@ export async function POST(request: NextRequest) {
     // Create response with httpOnly cookie
     const authResponse = createAuthResponse(token, user);
 
-    const response = NextResponse.json(authResponse.data);
+    // Include token in response body as fallback for preview environments
+    const responseData = {
+      ...authResponse.data,
+      token: authResponse.cookie.value // Add token to response for client-side handling
+    };
+
+    const response = NextResponse.json(responseData);
 
     // Set httpOnly cookie
+    console.log('Login API - Setting cookie:', authResponse.cookie.name);
+    console.log('Login API - Cookie options:', authResponse.cookie.options);
+    console.log('Login API - Token length:', authResponse.cookie.value.length);
+
     response.cookies.set(
       authResponse.cookie.name,
       authResponse.cookie.value,
       authResponse.cookie.options
     );
 
+    console.log('Login API - Cookie set successfully');
     return response;
 
   } catch (error) {

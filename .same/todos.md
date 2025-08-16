@@ -3,6 +3,7 @@
 ## ✅ Completed Tasks
 
 ### Authentication System
+
 - [x] Implement JWT-based authentication system
 - [x] Create JWT utilities for token generation and verification
 - [x] Add authentication API endpoints (login, logout, verify)
@@ -13,6 +14,7 @@
 - [x] Fix TypeScript and React Hook dependency issues
 
 ### Select Component Fix
+
 - [x] Fix Select component empty string value error
 - [x] Replace empty string values with "all" in filter components
 - [x] Update filter logic to handle "all" values properly
@@ -20,6 +22,7 @@
 ## 🔄 In Progress
 
 ### Authentication Features
+
 - [ ] Add password reset functionality
 - [ ] Implement user management (add/edit/delete users)
 - [ ] Add role-based access control for different dashboard sections
@@ -27,18 +30,21 @@
 ## 📋 Next Steps
 
 ### Security Enhancements
+
 - [ ] Add rate limiting to authentication endpoints
 - [ ] Implement password strength validation
 - [ ] Add login attempt tracking and account lockout
 - [ ] Add email verification for new accounts
 
 ### User Experience
+
 - [ ] Add "Remember Me" functionality
 - [ ] Implement auto-logout on token expiration with warning
 - [ ] Add user profile management page
 - [ ] Add session management (view active sessions)
 
 ### Testing
+
 - [ ] Add unit tests for authentication utilities
 - [ ] Add integration tests for auth API endpoints
 - [ ] Test authentication flow in different browsers
@@ -47,12 +53,14 @@
 ## 💡 Future Features
 
 ### Advanced Authentication
+
 - [ ] Add two-factor authentication (2FA)
 - [ ] Implement OAuth providers (Google, Microsoft)
 - [ ] Add single sign-on (SSO) support
 - [ ] Implement refresh token rotation
 
 ### Analytics Access Control
+
 - [ ] Add different permission levels for analytics
 - [ ] Implement user-specific data filtering
 - [ ] Add audit logging for data access

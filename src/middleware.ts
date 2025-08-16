@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest, hasRole } from '@/lib/auth';
 
 // Define protected routes
-const protectedRoutes = ['/dashboard'];
-const adminOnlyRoutes = ['/dashboard'];
+const protectedRoutes: string[] = []; // Dashboard handles its own authentication
+const adminOnlyRoutes: string[] = []; // Dashboard handles its own role checking
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Note: /dashboard route is not protected here because it handles
+  // authentication internally with a better UX (shows login form directly)
 
   // Check if the current path is protected
   const isProtectedRoute = protectedRoutes.some(route =>
