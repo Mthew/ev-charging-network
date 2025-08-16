@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     if (dataType === "submissions") {
       // Get all submissions with locations for the heatmap
       console.log("Fetching all submissions for heatmap...");
-      const { submissions, locations } = await getAllSubmissions();
+      const { submissions, locations } = await getAllSubmissions({});
 
       return NextResponse.json({
         success: true,
@@ -135,13 +135,17 @@ export async function POST(request: NextRequest) {
 
     console.log("Filtered analytics request:", { filters });
 
-    // For now, return all data (filtering logic can be implemented later)
-    // In a future version, you would modify the SQL queries based on filters
-    const analyticsData = await getAnalyticsData(filters);
+    const [analyticsData, submissionsData] = await Promise.all([
+      getAnalyticsData(filters),
+      getAllSubmissions(filters),
+    ]);
 
     return NextResponse.json({
       success: true,
-      data: analyticsData,
+      data: {
+        ...analyticsData,
+        ...submissionsData,
+      },
       filters: filters,
       meta: {
         totalSubmissions: analyticsData.totalSubmissions,

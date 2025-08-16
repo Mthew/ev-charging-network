@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { googleMapsLoader } from "@/lib/google-maps-loader";
+import { MAP_DARK_STYLE } from "@/config/constants";
+import { set } from "zod";
+import { he } from "zod/v4/locales";
 
 // Type declarations at the top
 declare global {
@@ -10,7 +13,7 @@ declare global {
   }
 }
 
-interface Location {
+export interface Location {
   id: string;
   lat: number;
   lng: number;
@@ -31,6 +34,8 @@ interface GoogleMapsProps {
 // Default center: Medellín, Colombia
 const MEDELLIN_CENTER = { lat: 6.2442, lng: -75.5812 };
 
+let heatMapLayer: any = null;
+
 export default function GoogleMaps({
   locations = [],
   center = MEDELLIN_CENTER,
@@ -42,6 +47,9 @@ export default function GoogleMaps({
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
+  const [heatmapData, setHeatmapData] = useState<google.maps.MVCArray | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,109 +83,7 @@ export default function GoogleMaps({
         const newMap = new window.google.maps.Map(mapRef.current, {
           center: center,
           zoom: zoom,
-          styles: [
-            // Dark theme for the map
-            {
-              elementType: "geometry",
-              stylers: [{ color: "#212121" }],
-            },
-            {
-              elementType: "labels.icon",
-              stylers: [{ visibility: "off" }],
-            },
-            {
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#757575" }],
-            },
-            {
-              elementType: "labels.text.stroke",
-              stylers: [{ color: "#212121" }],
-            },
-            {
-              featureType: "administrative",
-              elementType: "geometry",
-              stylers: [{ color: "#757575" }],
-            },
-            {
-              featureType: "administrative.country",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#9e9e9e" }],
-            },
-            {
-              featureType: "administrative.land_parcel",
-              stylers: [{ visibility: "off" }],
-            },
-            {
-              featureType: "administrative.locality",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#bdbdbd" }],
-            },
-            {
-              featureType: "poi",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#757575" }],
-            },
-            {
-              featureType: "poi.park",
-              elementType: "geometry",
-              stylers: [{ color: "#181818" }],
-            },
-            {
-              featureType: "poi.park",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#616161" }],
-            },
-            {
-              featureType: "poi.park",
-              elementType: "labels.text.stroke",
-              stylers: [{ color: "#1b1b1b" }],
-            },
-            {
-              featureType: "road",
-              elementType: "geometry.fill",
-              stylers: [{ color: "#2c2c2c" }],
-            },
-            {
-              featureType: "road",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#8a8a8a" }],
-            },
-            {
-              featureType: "road.arterial",
-              elementType: "geometry",
-              stylers: [{ color: "#373737" }],
-            },
-            {
-              featureType: "road.highway",
-              elementType: "geometry",
-              stylers: [{ color: "#3c3c3c" }],
-            },
-            {
-              featureType: "road.highway.controlled_access",
-              elementType: "geometry",
-              stylers: [{ color: "#4e4e4e" }],
-            },
-            {
-              featureType: "road.local",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#616161" }],
-            },
-            {
-              featureType: "transit",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#757575" }],
-            },
-            {
-              featureType: "water",
-              elementType: "geometry",
-              stylers: [{ color: "#000000" }],
-            },
-            {
-              featureType: "water",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#3d3d3d" }],
-            },
-          ],
+          styles: MAP_DARK_STYLE,
         });
 
         // Add click listener if provided
@@ -210,6 +116,14 @@ export default function GoogleMaps({
 
     // Clear existing markers
     markers.forEach((marker) => marker.setMap(null));
+    if (heatMapLayer) {
+      heatMapLayer.setMap(null);
+    }
+    // if (heatmapData != null) {
+    //   while (heatmapData.getLength() > 0) {
+    //     heatmapData.removeAt(0);
+    //   }
+    // }
 
     // Create new markers
     const newMarkers = locations.map((location) => {
@@ -243,7 +157,7 @@ export default function GoogleMaps({
       return marker;
     });
 
-    setMarkers(newMarkers);
+    let _heatmapData = null;
 
     // If showing heatmap, create heat map
     if (
@@ -251,16 +165,24 @@ export default function GoogleMaps({
       locations.length > 0 &&
       window.google?.maps?.visualization
     ) {
-      const heatmapData = locations.map(
-        (location) => new window.google!.maps.LatLng(location.lat, location.lng)
-      );
+      _heatmapData = new google.maps.MVCArray([
+        ...locations.map(
+          (location) =>
+            new window.google!.maps.LatLng(location.lat, location.lng)
+        ),
+      ]);
 
-      new window.google!.maps.visualization.HeatmapLayer({
-        data: heatmapData,
-        map: map,
-        radius: 20,
-        opacity: 0.6,
-      });
+      if (heatMapLayer) {
+        heatMapLayer.setMap(map);
+        heatMapLayer.setData(_heatmapData);
+      } else {
+        heatMapLayer = new window.google!.maps.visualization.HeatmapLayer({
+          data: _heatmapData,
+          map: map,
+          radius: 20,
+          opacity: 0.6,
+        });
+      }
     }
 
     // Adjust map bounds to fit all markers
@@ -282,6 +204,9 @@ export default function GoogleMaps({
         }
       }
     }
+
+    setHeatmapData(heatmapData);
+    setMarkers(newMarkers);
   };
 
   const getMarkerIcon = (type?: string) => {

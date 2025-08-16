@@ -30,6 +30,7 @@ import GooglePlacesAutocomplete from "@/components/GooglePlacesAutocomplete";
 import {
   AVERAGE_KMS_PER_DAY,
   CHARGER_TYPES,
+  COST_PER_KWH,
   PRIMARY_CHARGING_LOCATION,
   USAGE_TYPE,
   VEHICLE_TYPES,
@@ -39,7 +40,7 @@ const formSchema = z.object({
   // Vehicle Information
   vehicleType: z.string().min(1, "Selecciona el tipo de vehículo"),
   brandModel: z.string().min(1, "Ingresa la marca/modelo"),
-  licensePlate: z.string().optional(),
+  // licensePlate: z.string().optional(),
   usageType: z.string().min(1, "Selecciona el tipo de uso"),
   averageKmsPerDay: z.string().min(1, "Ingresa los kilómetros promedio"),
 
@@ -49,6 +50,7 @@ const formSchema = z.object({
     .min(1, "Selecciona la ubicación principal"),
   chargingAddress: z.string().min(1, "Ingresa la dirección"),
   chargerType: z.string().min(1, "Selecciona el tipo de cargador"),
+  costPerKmCharged: z.string().min(1, "Ingresa el costo por km cargado"),
 
   // Desired New Station Location (optional - will be validated separately)
   newStationIdentifier: z.string().optional(),
@@ -83,12 +85,13 @@ export default function Home() {
     defaultValues: {
       vehicleType: "",
       brandModel: "",
-      licensePlate: "",
+      // licensePlate: "",
       usageType: "",
       averageKmsPerDay: "",
       primaryChargingLocation: "",
       chargingAddress: "",
       chargerType: "",
+      costPerKmCharged: "",
       newStationIdentifier: "",
       newStationAddress: "",
       fullName: "",
@@ -334,9 +337,9 @@ export default function Home() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {VEHICLE_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
+                          {VEHICLE_TYPES.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
                             </SelectItem>
                           ))}
                           <SelectItem value="scooter">Scooter</SelectItem>
@@ -399,9 +402,9 @@ export default function Home() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {USAGE_TYPE.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
+                          {USAGE_TYPE.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -415,9 +418,9 @@ export default function Home() {
                   control={form.control}
                   name="averageKmsPerDay"
                   render={({ field }) => (
-                    <FormItem className="md:col-span-2">
+                    <FormItem>
                       <FormLabel className="text-white">
-                        Kms al Día Promedio
+                        Promedio de kilometros por dia
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -430,8 +433,8 @@ export default function Home() {
                         </FormControl>
                         <SelectContent>
                           {AVERAGE_KMS_PER_DAY.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
+                            <SelectItem key={option} value={option}>
+                              {option}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -476,8 +479,8 @@ export default function Home() {
                         </FormControl>
                         <SelectContent>
                           {PRIMARY_CHARGING_LOCATION.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
+                            <SelectItem key={option} value={option}>
+                              {option}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -527,9 +530,9 @@ export default function Home() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {CHARGER_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
+                          {CHARGER_TYPES.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
                             </SelectItem>
                           ))}
                           <SelectItem value="otro">Otro</SelectItem>
@@ -542,7 +545,7 @@ export default function Home() {
 
                 <FormField
                   control={form.control}
-                  name="CostPerKmCharged"
+                  name="costPerKmCharged"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
                       <FormLabel className="text-white">
@@ -558,9 +561,9 @@ export default function Home() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {CHARGER_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
+                          {COST_PER_KWH.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
                             </SelectItem>
                           ))}
                           <SelectItem value="otro">Otro</SelectItem>

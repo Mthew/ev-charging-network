@@ -4,13 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Card,
   CardContent,
   CardDescription,
@@ -33,20 +26,26 @@ import {
 } from "recharts";
 import {
   MapPin,
-  Filter,
-  BarChart3,
   PieChart as PieChartIcon,
   TrendingUp,
   Users,
   Car,
-  Zap,
   LogOut,
   Eye,
   EyeOff,
   AlertCircle,
 } from "lucide-react";
-import GoogleMaps from "@/components/GoogleMaps";
+import GoogleMaps, { Location } from "@/components/GoogleMaps";
 import { useAuth } from "@/hooks/useAuth";
+import { DashboardFilters } from "@/components/dashboard/DashboardFilters";
+import { set } from "zod";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@radix-ui/react-select";
 
 interface AnalyticsData {
   vehicleTypes: Array<{ vehicle_type: string; count: number }>;
@@ -70,50 +69,6 @@ const COLORS = [
   "#8b5cf6",
   "#06b6d4",
 ];
-
-// Generate demo locations for Medellín heatmap
-const generateDemoLocations = () => {
-  const medellinCenter = { lat: 6.2442, lng: -75.5812 };
-  const locations: Array<{
-    id: string;
-    lat: number;
-    lng: number;
-    title: string;
-    description: string;
-    type: "submission";
-  }> = [];
-
-  // Generate sample locations around Medellín
-  const areas = [
-    { name: "Poblado", lat: 6.2077, lng: -75.5636, count: 15 },
-    { name: "Laureles", lat: 6.2486, lng: -75.5907, count: 12 },
-    { name: "Centro", lat: 6.2476, lng: -75.5658, count: 20 },
-    { name: "Envigado", lat: 6.1711, lng: -75.5919, count: 8 },
-    { name: "Sabaneta", lat: 6.1513, lng: -75.6163, count: 6 },
-    { name: "Itagüí", lat: 6.1655, lng: -75.6344, count: 10 },
-    { name: "Bello", lat: 6.3369, lng: -75.5539, count: 14 },
-    { name: "Medellín Norte", lat: 6.294, lng: -75.54, count: 9 },
-  ];
-
-  areas.forEach((area, areaIndex) => {
-    for (let i = 0; i < area.count; i++) {
-      // Add some random variation around each area center
-      const lat = area.lat + (Math.random() - 0.5) * 0.02;
-      const lng = area.lng + (Math.random() - 0.5) * 0.02;
-
-      locations.push({
-        id: `demo-${areaIndex}-${i}`,
-        lat,
-        lng,
-        title: `${area.name} - Punto ${i + 1}`,
-        description: `Solicitud de estación de carga en ${area.name}`,
-        type: "submission" as const,
-      });
-    }
-  });
-
-  return locations;
-};
 
 export default function Dashboard() {
   const {
@@ -149,11 +104,7 @@ export default function Dashboard() {
       created_at: string;
     }>;
   } | null>(null);
-  const [activeFilters, setActiveFilters] = useState({
-    locationType: "all",
-    vehicleType: "all",
-    usageType: "all",
-  });
+
   const [isLoading, setIsLoading] = useState(false);
 
   // Real JWT authentication
@@ -243,7 +194,6 @@ export default function Dashboard() {
 
         const submissionsResult = await submissionsResponse.json();
         if (submissionsResult.success) {
-          console.log("Submissions data loaded successfully");
           setSubmissionsData(submissionsResult.data);
         }
       } catch (error) {
@@ -282,12 +232,16 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, user, loadAnalyticsData]);
 
-  const applyFilters = async () => {
+  const applyFilters = async (filters: {
+    locationType?: string;
+    vehicleType?: string;
+    usageType?: string;
+  }) => {
     setIsLoading(true);
     try {
       // Convert "all" values to empty strings for the API
       const filtersForAPI = Object.fromEntries(
-        Object.entries(activeFilters).map(([key, value]) => [
+        Object.entries(filters).map(([key, value]) => [
           key,
           value === "all" ? "" : value,
         ])
@@ -310,9 +264,16 @@ export default function Dashboard() {
         credentials: "include", // Include cookies for authentication
         body: JSON.stringify({ filters: filtersForAPI }),
       });
+
       const result = await response.json();
       if (result.success) {
-        setAnalyticsData(result.data);
+        const { submissions, locations, ...rest } = result.data;
+        setAnalyticsData(rest);
+        setSubmissionsData({
+          submissions,
+          locations,
+        });
+        setMapVisualizationType("all");
       } else if (response.status === 401) {
         // Token expired or invalid, logout user
         logout();
@@ -323,6 +284,78 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getMapLocations = (
+    data: any,
+    filter: "desired" | "submitted" | "all" = "all"
+  ): Location[] => {
+    const locations: Location[] = [];
+
+    if (data) {
+      data.submissions &&
+        ["all", "submitted"].includes(filter) &&
+        locations.push(
+          ...data.submissions
+            .filter(
+              (loc: any) => loc.charging_latitude && loc.charging_longitude
+            )
+            .map((loc: any) => ({
+              id: loc.id.toString(),
+              lat: Number(loc.charging_latitude),
+              lng: Number(loc.charging_longitude),
+              title: loc.primary_charging_location,
+              description: loc.charging_address,
+              type: "charging",
+            }))
+        );
+
+      data.locations &&
+        ["all", "desired"].includes(filter) &&
+        locations.push(
+          ...data.locations
+            .filter((loc: any) => loc.latitude && loc.longitude)
+            .map((loc: any) => ({
+              id: loc.id.toString(),
+              lat: Number(loc.latitude),
+              lng: Number(loc.longitude),
+              title: loc.identifier,
+              description: loc.address,
+              type: "submission",
+            }))
+        );
+    }
+
+    return locations;
+  };
+
+  const [mapVisualizationType, setMapVisualizationType] = useState<
+    "desired" | "submitted" | "all"
+  >("all");
+  const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
+
+  useEffect(() => {
+    const applyLocationFilters = () => {
+      if (submissionsData?.locations && submissionsData?.locations) {
+        let filtered = getMapLocations(submissionsData || []);
+        // Apply additional filtering logic here
+        setFilteredLocations(() => filtered);
+      }
+    };
+
+    applyLocationFilters();
+  }, [submissionsData]);
+
+  const handlers = {
+    changeMapVisualization: (e: any) => {
+      const selectedFilter = e.target.value;
+      if (selectedFilter) {
+        setMapVisualizationType(selectedFilter);
+        setFilteredLocations(() =>
+          getMapLocations(submissionsData || [], selectedFilter)
+        );
+      }
+    },
   };
 
   // Show loading spinner while checking authentication
@@ -455,96 +488,7 @@ export default function Dashboard() {
       </header>
 
       <div className="p-6 mx-auto">
-        {/* #region Filters Section */}
-        <Card className="mb-6 bg-black/20 backdrop-blur-sm border-white/10">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Filter className="w-5 h-5 mr-2 text-primary" />
-              Filtros de Ubicación
-            </CardTitle>
-            <CardDescription className="text-gray-300">
-              Filtra los datos por Casa, Trabajo, Tercer Lugar, etc.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="text-white text-sm mb-2 block">
-                  Tipo de Ubicación
-                </label>
-                <Select
-                  value={activeFilters.locationType}
-                  onValueChange={(value) =>
-                    setActiveFilters({ ...activeFilters, locationType: value })
-                  }
-                >
-                  <SelectTrigger className="custom-input">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="home">Casa</SelectItem>
-                    <SelectItem value="work">Trabajo</SelectItem>
-                    <SelectItem value="university">Universidad</SelectItem>
-                    <SelectItem value="other">Otro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-white text-sm mb-2 block">
-                  Tipo de Vehículo
-                </label>
-                <Select
-                  value={activeFilters.vehicleType}
-                  onValueChange={(value) =>
-                    setActiveFilters({ ...activeFilters, vehicleType: value })
-                  }
-                >
-                  <SelectTrigger className="custom-input">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="car">Automóvil</SelectItem>
-                    <SelectItem value="motorcycle">Motocicleta</SelectItem>
-                    <SelectItem value="bicycle">Bicicleta</SelectItem>
-                    <SelectItem value="scooter">Scooter</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-white text-sm mb-2 block">
-                  Tipo de Uso
-                </label>
-                <Select
-                  value={activeFilters.usageType}
-                  onValueChange={(value) =>
-                    setActiveFilters({ ...activeFilters, usageType: value })
-                  }
-                >
-                  <SelectTrigger className="custom-input">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="work">Trabajo</SelectItem>
-                    <SelectItem value="delivery">Domicilios</SelectItem>
-                    <SelectItem value="taxi">Taxi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <Button
-              onClick={applyFilters}
-              disabled={isLoading}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Aplicar Filtros
-            </Button>
-          </CardContent>
-        </Card>
+        <DashboardFilters applyFilters={applyFilters} isLoading={isLoading} />
 
         {/* Main Content Grid */}
 
@@ -615,7 +559,7 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle className="text-white flex items-center">
                   <Car className="w-5 h-5 mr-2 text-primary" />
-                  Tipo EV
+                  Tipo de vehiculo
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -623,13 +567,21 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
                       <Pie
-                        data={analyticsData.vehicleTypes}
+                        data={[
+                          ...analyticsData.vehicleTypes.map((item) => ({
+                            vehicle_type: item.vehicle_type,
+                            count: Number(item.count),
+                          })),
+                        ]}
                         cx="50%"
                         cy="50%"
                         outerRadius={60}
                         fill="#8884d8"
                         dataKey="count"
                         nameKey="vehicle_type"
+                        label={({ vehicle_type, count }) =>
+                          `${vehicle_type}: ${count}`
+                        }
                       >
                         {analyticsData.vehicleTypes.map((entry, index) => (
                           <Cell
@@ -674,7 +626,28 @@ export default function Dashboard() {
             <Card className="bg-black/20 backdrop-blur-sm border-white/10 h-full">
               <CardHeader>
                 <CardTitle className="text-white">
-                  Mapa de Calor - Medellín
+                  <div className="flex justify-between items-center mb-2">
+                    <div>Mapa de Calor - Medellín</div>
+                    <div>
+                      <div className="relative inline-block text-left">
+                        <select
+                          className="bg-black/20 border border-white/20 rounded-md px-3 py-1 text-white text-sm focus:outline-none focus:border-primary"
+                          onChange={handlers.changeMapVisualization}
+                          value={mapVisualizationType}
+                        >
+                          <option className="bg-[#1e293b]" value="all">
+                            Todas las ubicaciones
+                          </option>
+                          <option className="bg-[#1e293b]" value="submitted">
+                            Datos enviados
+                          </option>
+                          <option className="bg-[#1e293b]" value="desired">
+                            Ubicaciones deseadas
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </CardTitle>
                 <CardDescription className="text-gray-300">
                   Concentración de solicitudes y puntos de carga
@@ -697,20 +670,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="h-[calc(100%-110px)]">
                 <GoogleMaps
-                  locations={
-                    submissionsData
-                      ? submissionsData.locations
-                          .filter((loc) => loc.latitude && loc.longitude)
-                          .map((loc) => ({
-                            id: loc.id.toString(),
-                            lat: Number(loc.latitude),
-                            lng: Number(loc.longitude),
-                            title: loc.identifier,
-                            description: loc.address,
-                            type: "submission",
-                          }))
-                      : []
-                  }
+                  locations={filteredLocations || []}
                   showHeatmap={true}
                   className="rounded-lg border border-white/20 h-full"
                 />
@@ -723,7 +683,7 @@ export default function Dashboard() {
             {/* Totals by Location */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">
               <CardHeader>
-                <CardTitle className="text-white">Totales</CardTitle>
+                <CardTitle className="text-white">Lugares de carga</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -754,7 +714,12 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
                       <Pie
-                        data={analyticsData.desiredLocationCounts}
+                        data={analyticsData.desiredLocationCounts.map(
+                          (item) => ({
+                            identifier: item.identifier,
+                            count: Number(item.count),
+                          })
+                        )}
                         cx="50%"
                         cy="50%"
                         outerRadius={60}
@@ -775,20 +740,6 @@ export default function Dashboard() {
                     </PieChart>
                   </ResponsiveContainer>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Género placeholder */}
-            <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Género</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center text-gray-400">
-                  <PieChartIcon className="w-12 h-12 mx-auto mb-2" />
-                  <p className="text-sm">Datos demográficos</p>
-                  <p className="text-xs">Se recopilará en futuras versiones</p>
-                </div>
               </CardContent>
             </Card>
           </div>

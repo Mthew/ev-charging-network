@@ -73,7 +73,6 @@ export interface EVFormSubmission {
   // Vehicle Information
   vehicle_type: string;
   brand_model: string;
-  license_plate?: string;
   usage_type: string;
   average_kms_per_day: string;
 
@@ -83,6 +82,7 @@ export interface EVFormSubmission {
   charging_latitude?: number;
   charging_longitude?: number;
   charger_type: string;
+  cost_per_km_charged?: string;
 
   // Contact Information
   full_name: string;
@@ -118,14 +118,14 @@ export async function initializeDatabase(): Promise<boolean> {
         id INT AUTO_INCREMENT PRIMARY KEY,
         vehicle_type VARCHAR(100) NOT NULL,
         brand_model VARCHAR(200) NOT NULL,
-        license_plate VARCHAR(50),
         usage_type VARCHAR(100) NOT NULL,
         average_kms_per_day VARCHAR(50) NOT NULL,
         primary_charging_location VARCHAR(100) NOT NULL,
         charging_address TEXT NOT NULL,
-        charging_latitude DECIMAL(10, 8),
-        charging_longitude DECIMAL(11, 8),
+        charging_latitude DECIMAL(10, 8) NOT NULL,
+        charging_longitude DECIMAL(11, 8) NOT NULL,
         charger_type VARCHAR(100) NOT NULL,
+        cost_per_km_charged VARCHAR(100) NULL,
         full_name VARCHAR(200) NOT NULL,
         phone VARCHAR(50) NOT NULL,
         email VARCHAR(200) NOT NULL,
@@ -146,8 +146,8 @@ export async function initializeDatabase(): Promise<boolean> {
         submission_id INT NOT NULL,
         identifier VARCHAR(100) NOT NULL,
         address TEXT NOT NULL,
-        latitude DECIMAL(10, 8),
-        longitude DECIMAL(11, 8),
+        latitude DECIMAL(10, 8) NOT NULL,
+        longitude DECIMAL(11, 8) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (submission_id) REFERENCES ev_form_submissions(id) ON DELETE CASCADE,
         INDEX idx_submission_id (submission_id),
@@ -174,8 +174,8 @@ export async function insertFormSubmission(
   desiredLocations: Array<{
     identifier: string;
     address: string;
-    latitude?: number;
-    longitude?: number;
+    lat?: number;
+    lng?: number;
   }>,
   chargingCoordinates?: { lat?: number; lng?: number }
 ): Promise<number> {
@@ -195,15 +195,14 @@ export async function insertFormSubmission(
     const [result] = await connection.execute(
       `
       INSERT INTO ev_form_submissions (
-        vehicle_type, brand_model, license_plate, usage_type, average_kms_per_day,
+        vehicle_type, brand_model, usage_type, average_kms_per_day,
         primary_charging_location, charging_address, charging_latitude, charging_longitude, charger_type,
-        full_name, phone, email
+        cost_per_km_charged, full_name, phone, email
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
         submission.vehicle_type,
         submission.brand_model,
-        submission.license_plate || null,
         submission.usage_type,
         submission.average_kms_per_day,
         submission.primary_charging_location,
@@ -211,6 +210,7 @@ export async function insertFormSubmission(
         chargingCoordinates?.lat || null,
         chargingCoordinates?.lng || null,
         submission.charger_type,
+        submission.cost_per_km_charged,
         submission.full_name,
         submission.phone,
         submission.email,
@@ -231,8 +231,8 @@ export async function insertFormSubmission(
           submissionId,
           location.identifier,
           location.address,
-          location.latitude || null,
-          location.longitude || null,
+          location.lat,
+          location.lng,
         ]
       );
     }
@@ -259,23 +259,38 @@ export async function insertFormSubmission(
 }
 
 // Get all submissions with their desired locations
-export async function getAllSubmissions() {
+export async function getAllSubmissions(filters: {
+  vehicleType?: string;
+  locationType?: string;
+  usageType?: string;
+}) {
   let connection: PoolConnection | null = null;
 
   try {
     connection = await getConnection();
 
-    const [submissions] = await connection.execute(`
-      SELECT * FROM ev_form_submissions
-      ORDER BY created_at DESC
-    `);
+    // Build a dynamic WHERE clause to avoid repetition and handle empty filters
+    const { whereClause, params } = buildWhereClause(filters);
 
-    const [locations] = await connection.execute(`
-      SELECT dl.*, efs.id as submission_id
-      FROM desired_locations dl
-      JOIN ev_form_submissions efs ON dl.submission_id = efs.id
-      ORDER BY dl.created_at DESC
-    `);
+    const [submissions] = await connection.execute(
+      `
+      SELECT * FROM ev_form_submissions
+      ${whereClause}
+      ORDER BY created_at DESC
+    `,
+      params
+    );
+
+    const [locations] = await connection.execute(
+      `SELECT dl.*, efs.id as submission_id
+         FROM desired_locations dl
+         JOIN ev_form_submissions efs ON dl.submission_id = efs.id
+         ${whereClause.replace(
+           /(\w+)\s*=/g,
+           "efs.$1 ="
+         )} ORDER BY dl.created_at DESC`,
+      params
+    );
 
     console.log(
       "✅ Retrieved",
@@ -299,6 +314,35 @@ export async function getAllSubmissions() {
   }
 }
 
+// Helper function to build dynamic WHERE clause for filters
+function buildWhereClause(filters: {
+  vehicleType?: string;
+  locationType?: string;
+  usageType?: string;
+}): { whereClause: string; params: (string | number)[] } {
+  const whereConditions: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (filters.vehicleType && filters.vehicleType !== "all") {
+    whereConditions.push("vehicle_type = ?");
+    params.push(filters.vehicleType);
+  }
+  if (filters.locationType && filters.locationType !== "all") {
+    // Assuming locationType maps to primary_charging_location
+    whereConditions.push("primary_charging_location = ?");
+    params.push(filters.locationType);
+  }
+  if (filters.usageType && filters.usageType !== "all") {
+    whereConditions.push("usage_type = ?");
+    params.push(filters.usageType);
+  }
+
+  const whereClause =
+    whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+
+  return { whereClause, params };
+}
+
 // Get analytics data for dashboard
 export async function getAnalyticsData(filters: {
   vehicleType?: string;
@@ -311,27 +355,7 @@ export async function getAnalyticsData(filters: {
     connection = await getConnection();
 
     // Build a dynamic WHERE clause to avoid repetition and handle empty filters
-    const whereConditions: string[] = [];
-    const params: (string | number)[] = [];
-
-    if (filters.vehicleType && filters.vehicleType !== "all") {
-      whereConditions.push("vehicle_type = ?");
-      params.push(filters.vehicleType);
-    }
-    if (filters.locationType && filters.locationType !== "all") {
-      // Assuming locationType maps to primary_charging_location
-      whereConditions.push("primary_charging_location = ?");
-      params.push(filters.locationType);
-    }
-    if (filters.usageType && filters.usageType !== "all") {
-      whereConditions.push("usage_type = ?");
-      params.push(filters.usageType);
-    }
-
-    const whereClause =
-      whereConditions.length > 0
-        ? `WHERE ${whereConditions.join(" AND ")}`
-        : "";
+    const { whereClause, params } = buildWhereClause(filters);
 
     // Run all analytics queries in parallel for better performance
     const [
