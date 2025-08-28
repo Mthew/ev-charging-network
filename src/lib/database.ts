@@ -75,6 +75,8 @@ export interface EVFormSubmission {
   brand_model: string;
   usage_type: string;
   average_kms_per_day: string;
+  preference_connector: string;
+  usual_charging_schedule: string;
 
   // Current Charging Location
   primary_charging_location: string;
@@ -120,6 +122,8 @@ export async function initializeDatabase(): Promise<boolean> {
         brand_model VARCHAR(200) NOT NULL,
         usage_type VARCHAR(100) NOT NULL,
         average_kms_per_day VARCHAR(50) NOT NULL,
+        preference_connector VARCHAR(50) NOT NULL,
+        usual_charging_schedule VARCHAR(50) NOT NULL,
         primary_charging_location VARCHAR(100) NOT NULL,
         charging_address TEXT NOT NULL,
         charging_latitude DECIMAL(10, 8) NOT NULL,
@@ -195,16 +199,18 @@ export async function insertFormSubmission(
     const [result] = await connection.execute(
       `
       INSERT INTO ev_form_submissions (
-        vehicle_type, brand_model, usage_type, average_kms_per_day,
+        vehicle_type, brand_model, usage_type, average_kms_per_day, preference_connector, usual_charging_schedule,
         primary_charging_location, charging_address, charging_latitude, charging_longitude, charger_type,
         cost_per_km_charged, full_name, phone, email
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
         submission.vehicle_type,
         submission.brand_model,
         submission.usage_type,
         submission.average_kms_per_day,
+        submission.preference_connector,
+        submission.usual_charging_schedule,
         submission.primary_charging_location,
         submission.charging_address,
         chargingCoordinates?.lat || null,

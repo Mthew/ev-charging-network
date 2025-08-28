@@ -31,8 +31,10 @@ import {
   AVERAGE_KMS_PER_DAY,
   CHARGER_TYPES,
   COST_PER_KWH,
+  PREFERENCE_CONNECTOR,
   PRIMARY_CHARGING_LOCATION,
   USAGE_TYPE,
+  USUAL_CHARGING_SCHEDULE,
   VEHICLE_TYPES,
 } from "@/config/constants";
 
@@ -43,6 +45,10 @@ const formSchema = z.object({
   // licensePlate: z.string().optional(),
   usageType: z.string().min(1, "Selecciona el tipo de uso"),
   averageKmsPerDay: z.string().min(1, "Ingresa los kilómetros promedio"),
+  preferenceConnector: z.string().min(1, "Selecciona el conector preferido"),
+  usualChargingSchedule: z
+    .string()
+    .min(1, "Ingresa el horario de carga habitual"),
 
   // Current Charging Location
   primaryChargingLocation: z
@@ -342,7 +348,6 @@ export default function Home() {
                               {option}
                             </SelectItem>
                           ))}
-                          <SelectItem value="scooter">Scooter</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -443,6 +448,66 @@ export default function Home() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="preferenceConnector"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">
+                        Conector de preferencia
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="custom-input">
+                            <SelectValue placeholder="Selecciona un conector" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PREFERENCE_CONNECTOR.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="usualChargingSchedule"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">
+                        Horario de carga habitual
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="custom-input">
+                            <SelectValue placeholder="Selecciona un horario" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {USUAL_CHARGING_SCHEDULE.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
@@ -450,9 +515,7 @@ export default function Home() {
             <div className="form-section">
               <div className="flex items-center mb-6">
                 <Zap className="w-8 h-8 text-primary mr-3" />
-                <h2 className="section-heading">
-                  ¿Dónde recargas tu vehículo?
-                </h2>
+                <h2 className="section-heading">¿Como recargas tu vehículo?</h2>
               </div>
               <p className="section-description">
                 Con esta información crearemos un perfil de carga inicial para

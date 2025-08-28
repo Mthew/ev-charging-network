@@ -1,7 +1,7 @@
 export const CHARGER_TYPES = [
   "Cargador portatil a 110V",
-  "Cargador de pared AC 7 - 22kw",
-  "Cargador DC hasta 50Kw",
+  "Cargador de pared AC 7KW - 22KW",
+  "Cargador DC +50KW",
 ] as const;
 
 export const VEHICLE_TYPES = [
@@ -14,7 +14,7 @@ export const VEHICLE_TYPES = [
 ] as const;
 
 export const USAGE_TYPE = [
-  "personal",
+  "Particular",
   "Trabajo",
   "Domicilios",
   "Taxi",
@@ -39,6 +39,23 @@ export const COST_PER_KWH = [
   "Menos de $1000 COP",
   "Entre $1000 y $2000 COP",
   "Más de $2000 COP",
+];
+
+//preference_connector
+export const PREFERENCE_CONNECTOR = [
+  "CCS1 / T1",
+  "CCS2/ T2",
+  "NACS (tesla)",
+  "ChaDeMo",
+  "110/220V Tomacorriente",
+];
+
+//usual_charging_schedule
+export const USUAL_CHARGING_SCHEDULE = [
+  "Entre 8am-5pm",
+  "Terminando el dia, 5pm a 11pm",
+  "Madrugada, 5am a 8am.",
+  "Toda la noche",
 ];
 
 export const MAP_DARK_STYLE = [
