@@ -383,6 +383,7 @@ export async function getAnalyticsData(filters: {
       monthlyData,
       totalSubmissionsResult,
       totalLocationsResult,
+      recentSubmissionsResult,
     ] = await Promise.all([
       // Vehicle type distribution
       connection.execute(
@@ -433,6 +434,11 @@ export async function getAnalyticsData(filters: {
          ${whereClause.replace(/(\w+)\s*=/g, "efs.$1 =")}`,
         params
       ),
+      // Get recent submissions (last 5)
+      connection.execute(
+        `SELECT id, full_name, vehicle_type, brand_model, created_at FROM ev_form_submissions ${whereClause} ORDER BY created_at DESC LIMIT 5`,
+        params
+      ),
     ]);
 
     console.log("✅ Retrieved analytics data");
@@ -458,6 +464,13 @@ export async function getAnalyticsData(filters: {
       totalLocations: getTotal(
         totalLocationsResult[0] as Array<{ total: number }>
       ),
+      recentSubmissions: recentSubmissionsResult[0] as Array<{
+        id: number;
+        full_name: string;
+        vehicle_type: string;
+        brand_model: string;
+        created_at: string;
+      }>,
     };
   } catch (error) {
     console.error("❌ Error retrieving analytics data:", error);
@@ -474,7 +487,10 @@ export async function getAnalyticsData(filters: {
 }
 
 // Get paginated submissions
-export async function getSubmissions(options: { page: number; limit: number }): Promise<{ submissions: EVFormSubmission[], total: number }> {
+export async function getSubmissions(options: {
+  page: number;
+  limit: number;
+}): Promise<{ submissions: EVFormSubmission[]; total: number }> {
   let connection: PoolConnection | null = null;
   const { page, limit } = options;
   const offset = (page - 1) * limit;
@@ -487,12 +503,14 @@ export async function getSubmissions(options: { page: number; limit: number }): 
       [limit, offset]
     );
 
-    const [totalResult] = await connection.execute<mysql.RowDataPacket[]>(`SELECT COUNT(*) as total FROM ev_form_submissions`);
+    const [totalResult] = await connection.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as total FROM ev_form_submissions`
+    );
     const total = totalResult[0].total as number;
 
     return {
-        submissions: submissions as EVFormSubmission[],
-        total: total as number
+      submissions: submissions as EVFormSubmission[],
+      total: total as number,
     };
   } catch (error) {
     console.error("❌ Error retrieving submissions:", error);

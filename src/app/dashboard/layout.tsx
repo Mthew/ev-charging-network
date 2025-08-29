@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <DesktopSidebar />
 
         {/* Main Content */}
-        <div className="flex flex-1 flex-col md:ml-16">
+        <div className="w-full flex flex-1 flex-col md:ml-16">
           {/* Mobile Header */}
           <MobileHeader />
 

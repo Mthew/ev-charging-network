@@ -289,7 +289,7 @@ export default function Home() {
                 ¡Ayúdanos a estar más cerca de tus necesidades!
               </p>
             </div>
-            <div className="hidden md:block">
+            <div className="">
               <Image
                 src="/assets/images/hero-electric-car.jpg"
                 alt="Electric Car"
@@ -299,33 +299,6 @@ export default function Home() {
               />
             </div>
           </div>
-
-          {/* API Key Notice */}
-          {(!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-            process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ===
-              "your_google_maps_api_key_here") && (
-            <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg max-w-2xl mx-auto">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <MapPin className="w-5 h-5 text-yellow-400" />
-                <span className="text-yellow-400 font-semibold">
-                  Configure Google Maps API
-                </span>
-              </div>
-              <p className="text-yellow-300 text-sm text-center mb-3">
-                Para activar la funcionalidad completa de mapas y autocompletado
-                de direcciones
-              </p>
-              <div className="text-center">
-                <Button
-                  onClick={() => window.open("/api-key-setup", "_blank")}
-                  size="sm"
-                  className="bg-yellow-500 hover:bg-yellow-600 text-black"
-                >
-                  Configurar API Key →
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
 
         <Form {...form}>
@@ -333,8 +306,8 @@ export default function Home() {
             {/* Vehicle Information Section */}
             <div className="form-section grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
               <div className="md:col-span-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="hidden md:block md:col-span-1">
+                <div className="grid grid-cols-4 md:grid-cols-2 gap-8">
+                  <div className="col-span-4 order-2 md:order-1 md:col-span-1 mb-6">
                     <Image
                       src="/assets/images/form-car.jpg"
                       alt="Car"
@@ -343,7 +316,7 @@ export default function Home() {
                       className="rounded-lg shadow-2xl aspect-video object-cover"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-4 order-1 md:order-2 md:col-span-1">
                     <div className="flex items-center mb-6">
                       <Car className="w-8 h-8 text-primary mr-3" />
                       <h2 className="section-heading">¿Qué vehículo tienes?</h2>
@@ -551,8 +524,8 @@ export default function Home() {
             {/* Current Charging Location Section */}
             <div className="form-section grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
               <div className="md:col-span-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-10">
-                  <div className="md:col-span-1">
+                <div className="grid grid-cols-4 md:grid-cols-2 gap-8 pb-10">
+                  <div className="md:col-span-1 col-span-4">
                     <div className="flex items-center mb-6">
                       <Zap className="w-8 h-8 text-primary mr-3" />
                       <h2 className="section-heading">
@@ -565,7 +538,7 @@ export default function Home() {
                       recarga.
                     </p>
                   </div>
-                  <div className="hidden md:block md:col-span-1">
+                  <div className="md:col-span-1 col-span-4">
                     <Image
                       src="/assets/images/form-charging-station.jpg"
                       alt="Charging Station"
@@ -697,27 +670,41 @@ export default function Home() {
             {/* Desired New Station Location Section */}
             <div className="form-section">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <MapPin className="w-8 h-8 text-primary mr-3" />
-                  <h2 className="section-heading">
-                    ¿Dónde deseas una nueva estación?
-                  </h2>
-                </div>
-                {desiredLocations.length > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-green-400 font-medium">
-                      {desiredLocations.length} ubicación
-                      {desiredLocations.length !== 1 ? "es" : ""} agregada
-                      {desiredLocations.length !== 1 ? "s" : ""}
-                    </span>
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <div className="grid grid-cols-4 md:grid-cols-2 gap-8 pb-10">
+                  <div className="col-span-4 order-2 md:order-1 md:col-span-1 mb-6">
+                    <Image
+                      src="/assets/images/desired-station.png"
+                      alt="Car"
+                      width={800}
+                      height={600}
+                      className="rounded-lg shadow-2xl aspect-video object-cover"
+                    />
                   </div>
-                )}
+                  <div className="col-span-4 order-1 md:order-2 md:col-span-1">
+                    <div className="flex items-center">
+                      <MapPin className="w-8 h-8 text-primary mr-3" />
+                      <h2 className="section-heading">
+                        ¿Dónde deseas una nueva estación?
+                      </h2>
+                    </div>
+                    <p className="section-description">
+                      Con esta información crearemos un plano interactivo para
+                      seleccionar una nueva ubicación para tus necesidades de
+                      recarga.
+                    </p>
+                    {desiredLocations.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-green-400 font-medium">
+                          {desiredLocations.length} ubicación
+                          {desiredLocations.length !== 1 ? "es" : ""} agregada
+                          {desiredLocations.length !== 1 ? "s" : ""}
+                        </span>
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className="section-description">
-                Con esta información crearemos un plano interactivo para
-                seleccionar una nueva ubicación para tus necesidades de recarga.
-              </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-6">
                 <FormField
@@ -859,11 +846,29 @@ export default function Home() {
 
             {/* Contact Information Section */}
             <div className="form-section">
-              <div className="flex items-center mb-6">
-                <User className="w-8 h-8 text-primary mr-3" />
-                <h2 className="section-heading">
-                  ¿Cómo te contactamos cuando instalemos la estación?
-                </h2>
+              <div className="grid grid-cols-4 md:grid-cols-2 gap-8 pb-10">
+                <div className="md:col-span-1 col-span-4">
+                  <div className="flex items-center mb-6">
+                    <User className="w-8 h-8 text-primary mr-3" />
+                    <h2 className="section-heading">
+                      ¿Cómo te contactamos cuando instalemos la estación?
+                    </h2>
+                  </div>
+                  <p className="section-description">
+                    Nos pondremos en contacto contigo para informarte cuando la
+                    estación esté lista para su uso.
+                  </p>
+                </div>
+
+                <div className="md:col-span-1 col-span-4">
+                  <Image
+                    src="/assets/images/park-station.png"
+                    alt="Charging Station"
+                    width={800}
+                    height={600}
+                    className="rounded-lg shadow-2xl aspect-video object-cover"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
