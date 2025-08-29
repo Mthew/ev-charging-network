@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -24,28 +23,11 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import {
-  MapPin,
-  PieChart as PieChartIcon,
-  TrendingUp,
-  Users,
-  Car,
-  LogOut,
-  Eye,
-  EyeOff,
-  AlertCircle,
-} from "lucide-react";
+import { MapPin, TrendingUp, Users, Car, LogOut } from "lucide-react";
 import GoogleMaps, { Location } from "@/components/GoogleMaps";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardFilters } from "@/components/dashboard/DashboardFilters";
-import { set } from "zod";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@radix-ui/react-select";
+import { COLORS } from "@/config/constants";
 
 interface AnalyticsData {
   vehicleTypes: Array<{ vehicle_type: string; count: number }>;
@@ -59,28 +41,17 @@ interface AnalyticsData {
   monthlyData: Array<{ month: string; count: number }>;
   totalSubmissions: number;
   totalLocations: number;
+  recentSubmissions?: Array<{
+    id: number;
+    full_name: string;
+    vehicle_type: string;
+    brand_model: string;
+    created_at: string;
+  }>;
 }
 
-const COLORS = [
-  "#3b82f6",
-  "#ef4444",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#06b6d4",
-];
-
 export default function Dashboard() {
-  const {
-    user,
-    isLoading: authLoading,
-    isAuthenticated,
-    login,
-    logout,
-  } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
-  const [loginError, setLoginError] = useState("");
+  const { user, logout } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
     null
   );
@@ -106,30 +77,6 @@ export default function Dashboard() {
   } | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
-
-  // Real JWT authentication
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-
-    if (!loginForm.identifier || !loginForm.password) {
-      setLoginError("Please fill in all fields");
-      return;
-    }
-
-    const result = await login({
-      identifier: loginForm.identifier,
-      password: loginForm.password,
-    });
-
-    if (!result.success) {
-      setLoginError(result.message);
-    } else {
-      // Authentication successful, analytics will load automatically via useEffect
-      // Don't call loadAnalyticsData() here to avoid race condition with cookie setting
-      console.log("Login successful, auth state updated");
-    }
-  };
 
   const loadAnalyticsData = useCallback(
     async (retryCount = 0) => {
@@ -220,17 +167,8 @@ export default function Dashboard() {
 
   // Load analytics data when user becomes authenticated
   useEffect(() => {
-    if (isAuthenticated && user) {
-      // Longer delay to ensure cookie is properly set after login
-      console.log("User authenticated, loading analytics in 1.5 seconds...");
-      const timeoutId = setTimeout(() => {
-        console.log("Loading analytics data now...");
-        loadAnalyticsData();
-      }, 1500);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isAuthenticated, user, loadAnalyticsData]);
+    loadAnalyticsData();
+  }, [loadAnalyticsData]);
 
   const applyFilters = async (filters: {
     locationType?: string;
@@ -287,7 +225,6 @@ export default function Dashboard() {
   };
 
   const getMapLocations = (
-
     data: {
       submissions: Array<{
         id: number;
@@ -311,24 +248,20 @@ export default function Dashboard() {
         created_at: string;
       }>;
     } | null,
-
     filter: "desired" | "submitted" | "all" = "all"
   ): Location[] => {
     const locations: Location[] = [];
 
     if (data) {
-
       if (data.submissions && ["all", "submitted"].includes(filter)) {
         locations.push(
           ...data.submissions
             .filter((loc) => loc.charging_latitude && loc.charging_longitude)
             .map((loc) => ({
-
               id: loc.id.toString(),
               lat: Number(loc.charging_latitude),
               lng: Number(loc.charging_longitude),
               title: loc.primary_charging_location,
-
               description: loc.charging_address || "",
               type: "charging" as const,
             }))
@@ -340,18 +273,15 @@ export default function Dashboard() {
           ...data.locations
             .filter((loc) => loc.latitude && loc.longitude)
             .map((loc) => ({
-
               id: loc.id.toString(),
               lat: Number(loc.latitude),
               lng: Number(loc.longitude),
               title: loc.identifier,
               description: loc.address,
-
               type: "submission" as const,
             }))
         );
       }
-
     }
 
     return locations;
@@ -365,9 +295,7 @@ export default function Dashboard() {
   useEffect(() => {
     const applyLocationFilters = () => {
       if (submissionsData?.locations && submissionsData?.locations) {
-
         const filtered = getMapLocations(submissionsData || null);
-
         // Apply additional filtering logic here
         setFilteredLocations(() => filtered);
       }
@@ -377,132 +305,38 @@ export default function Dashboard() {
   }, [submissionsData]);
 
   const handlers = {
-
     changeMapVisualization: (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedFilter = e.target.value as "desired" | "submitted" | "all";
       if (selectedFilter) {
         setMapVisualizationType(selectedFilter);
         setFilteredLocations(() =>
           getMapLocations(submissionsData || null, selectedFilter)
-
         );
       }
     },
   };
-
-  // Show loading spinner while checking authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <Card className="w-full max-w-md bg-black/20 backdrop-blur-sm border-white/10">
-          <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-white">Verificando autenticación...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  //#region Authentication Login Form
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <Card className="w-full max-w-md bg-black/20 backdrop-blur-sm border-white/10">
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <span className="text-black font-bold">OG</span>
-              </div>
-              <span className="text-white font-semibold text-xl">
-                Dashboard
-              </span>
-            </div>
-            <CardTitle className="text-white">Acceso Administrativo</CardTitle>
-            <CardDescription className="text-gray-300">
-              Ingresa tus credenciales para acceder al panel de control
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Input
-                  type="text"
-                  placeholder="Usuario o Email"
-                  value={loginForm.identifier}
-                  onChange={(e) =>
-                    setLoginForm({ ...loginForm, identifier: e.target.value })
-                  }
-                  className="custom-input"
-                  required
-                />
-              </div>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Contraseña"
-                  value={loginForm.password}
-                  onChange={(e) =>
-                    setLoginForm({ ...loginForm, password: e.target.value })
-                  }
-                  className="custom-input pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </button>
-              </div>
-              {loginError && (
-                <div className="flex items-center space-x-2 text-red-400 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>{loginError}</span>
-                </div>
-              )}
-              <Button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90"
-                disabled={authLoading}
-              >
-                {authLoading ? "Iniciando..." : "Iniciar Sesión"}
-              </Button>
-              <div className="text-xs text-gray-400 text-center space-y-1">
-                <p>Credenciales demo:</p>
-                <p>admin / admin123 (Admin)</p>
-                <p>demo / demo123 (Usuario)</p>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   //#endregion
 
   return (
     <div className="min-h-screen gradient-bg">
       {/* Header */}
-      <header className="p-4 border-b border-white/10">
-        <div className="flex justify-between items-center mx-auto">
+      <header className="p-4 md:p-6 border-b border-white/10">
+        <div className="flex flex-col space-y-3 md:flex-row md:justify-between md:items-center md:space-y-0 mx-auto max-w-7xl">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <span className="text-black font-bold text-sm">OG</span>
             </div>
-            <span className="text-white font-semibold">Dashboard</span>
+            <span className="text-white font-semibold text-lg md:text-xl">
+              Dashboard
+            </span>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-white text-sm font-medium">{user?.username}</p>
-              <p className="text-gray-300 text-xs capitalize">
+          <div className="flex items-center justify-between md:justify-end space-x-4">
+            <div className="text-left md:text-right">
+              <p className="text-white text-sm md:text-base font-medium">
+                {user?.username}
+              </p>
+              <p className="text-gray-300 text-xs md:text-sm capitalize">
                 {user?.role === "admin" ? "Administrador" : "Usuario"}
               </p>
             </div>
@@ -510,31 +344,32 @@ export default function Dashboard() {
               variant="ghost"
               size="sm"
               onClick={logout}
-              className="text-white hover:text-primary"
+              className="text-white hover:text-primary flex items-center space-x-2 px-3 py-2"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Salir
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Salir</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="p-6 mx-auto">
+      <div className="p-4 md:p-6 mx-auto max-w-7xl">
         <DashboardFilters applyFilters={applyFilters} isLoading={isLoading} />
 
         {/* Main Content Grid */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
           {/* Left Sidebar - Charts and Data */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="xl:col-span-1 space-y-4 md:space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 md:gap-4">
               <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-300 text-sm">Total Usuarios</p>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-gray-300 text-xs md:text-sm">
+                        Total Usuarios
+                      </p>
+                      <p className="text-xl md:text-2xl font-bold text-white">
                         {analyticsData?.totalSubmissions || 0}
                       </p>
                       <p className="text-xs text-gray-400">
@@ -545,25 +380,25 @@ export default function Dashboard() {
                         ) || 0}
                       </p>
                     </div>
-                    <Users className="w-8 h-8 text-primary" />
+                    <Users className="w-6 h-6 md:w-8 md:h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
               <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-300 text-sm">
+                      <p className="text-gray-300 text-xs md:text-sm">
                         Ubicaciones Deseadas
                       </p>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-xl md:text-2xl font-bold text-white">
                         {analyticsData?.totalLocations || 0}
                       </p>
                       <p className="text-xs text-gray-400">
                         Puntos de carga solicitados
                       </p>
                     </div>
-                    <MapPin className="w-8 h-8 text-primary" />
+                    <MapPin className="w-6 h-6 md:w-8 md:h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
@@ -571,11 +406,11 @@ export default function Dashboard() {
 
             {/* Database Status Indicator */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-              <CardContent className="p-4">
+              <CardContent className="p-3 md:p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-white text-sm font-medium">
+                    <span className="text-white text-sm md:text-base font-medium">
                       Base de Datos Conectada
                     </span>
                   </div>
@@ -588,15 +423,19 @@ export default function Dashboard() {
 
             {/* Vehicle Type Chart */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Car className="w-5 h-5 mr-2 text-primary" />
+              <CardHeader className="pb-2 md:pb-4">
+                <CardTitle className="text-white flex items-center text-base md:text-lg">
+                  <Car className="w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
                   Tipo de vehiculo
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 {analyticsData?.vehicleTypes && (
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer
+                    width="100%"
+                    height={180}
+                    className="md:h-[200px]"
+                  >
                     <PieChart>
                       <Pie
                         data={[
@@ -607,7 +446,7 @@ export default function Dashboard() {
                         ]}
                         cx="50%"
                         cy="50%"
-                        outerRadius={60}
+                        outerRadius={50}
                         fill="#8884d8"
                         dataKey="count"
                         nameKey="vehicle_type"
@@ -631,19 +470,25 @@ export default function Dashboard() {
 
             {/* Usage Statistics */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Recorrido</CardTitle>
+              <CardHeader className="pb-2 md:pb-4">
+                <CardTitle className="text-white text-base md:text-lg">
+                  Recorrido
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 {analyticsData?.kmRanges && (
-                  <ResponsiveContainer width="100%" height={150}>
+                  <ResponsiveContainer
+                    width="100%"
+                    height={120}
+                    className="md:h-[150px]"
+                  >
                     <BarChart data={analyticsData.kmRanges}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                       <XAxis
                         dataKey="average_kms_per_day"
                         tick={{ fill: "#9CA3AF", fontSize: 10 }}
                       />
-                      <YAxis tick={{ fill: "#9CA3AF" }} />
+                      <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} />
                       <Tooltip />
                       <Bar dataKey="count" fill="#3b82f6" />
                     </BarChart>
@@ -654,16 +499,18 @@ export default function Dashboard() {
           </div>
 
           {/* Center - Heatmap */}
-          <div className="lg:col-span-2 row-span-2 col-start-2">
+          <div className="xl:col-span-2 xl:row-span-2 order-first xl:order-none">
             <Card className="bg-black/20 backdrop-blur-sm border-white/10 h-full">
-              <CardHeader>
+              <CardHeader className="pb-2 md:pb-4">
                 <CardTitle className="text-white">
-                  <div className="flex justify-between items-center mb-2">
-                    <div>Mapa de Calor - Medellín</div>
+                  <div className="flex flex-col space-y-3 md:flex-row md:justify-between md:items-center md:space-y-0">
+                    <div className="text-base md:text-lg">
+                      Mapa de Calor - Medellín
+                    </div>
                     <div>
-                      <div className="relative inline-block text-left">
+                      <div className="relative inline-block text-left w-full md:w-auto">
                         <select
-                          className="bg-black/20 border border-white/20 rounded-md px-3 py-1 text-white text-sm focus:outline-none focus:border-primary"
+                          className="w-full md:w-auto bg-black/20 border border-white/20 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
                           onChange={handlers.changeMapVisualization}
                           value={mapVisualizationType}
                         >
@@ -681,10 +528,10 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </CardTitle>
-                <CardDescription className="text-gray-300">
+                <CardDescription className="text-gray-300 text-sm">
                   Concentración de solicitudes y puntos de carga
                   {/* Legend */}
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                     <div className="flex items-center justify-center space-x-1">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                       <span className="text-gray-300">Baja</span>
@@ -700,34 +547,36 @@ export default function Dashboard() {
                   </div>
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-[calc(100%-110px)]">
+              <CardContent className="h-[300px] md:h-[400px] xl:h-[calc(100%-120px)] p-3 md:p-6">
                 <GoogleMaps
                   locations={filteredLocations || []}
                   showHeatmap={true}
-                  className="rounded-lg border border-white/20 h-full"
+                  className="rounded-lg border border-white/20 h-full w-full"
                 />
               </CardContent>
             </Card>
           </div>
 
           {/* Right Sidebar - More Analytics */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="xl:col-span-1 space-y-4 md:space-y-6">
             {/* Totals by Location */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Lugares de carga</CardTitle>
+              <CardHeader className="pb-2 md:pb-4">
+                <CardTitle className="text-white text-base md:text-lg">
+                  Lugares de carga
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+              <CardContent className="pt-0">
+                <div className="space-y-2 md:space-y-3">
                   {analyticsData?.chargingLocations.map((location, index) => (
                     <div
                       key={index}
-                      className="flex justify-between items-center"
+                      className="flex justify-between items-center p-2 hover:bg-white/5 rounded"
                     >
-                      <span className="text-gray-300 capitalize">
+                      <span className="text-gray-300 capitalize text-sm md:text-base truncate pr-2">
                         {location.primary_charging_location}
                       </span>
-                      <span className="text-white font-semibold">
+                      <span className="text-white font-semibold text-sm md:text-base flex-shrink-0">
                         {location.count}
                       </span>
                     </div>
@@ -738,12 +587,18 @@ export default function Dashboard() {
 
             {/* Location Preferences */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Location</CardTitle>
+              <CardHeader className="pb-2 md:pb-4">
+                <CardTitle className="text-white text-base md:text-lg">
+                  Location
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 {analyticsData?.desiredLocationCounts && (
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer
+                    width="100%"
+                    height={180}
+                    className="md:h-[200px]"
+                  >
                     <PieChart>
                       <Pie
                         data={analyticsData.desiredLocationCounts.map(
@@ -754,10 +609,13 @@ export default function Dashboard() {
                         )}
                         cx="50%"
                         cy="50%"
-                        outerRadius={60}
+                        outerRadius={50}
                         fill="#8884d8"
                         dataKey="count"
                         nameKey="identifier"
+                        label={({ identifier, count }) =>
+                          `${identifier}: ${count}`
+                        }
                       >
                         {analyticsData.desiredLocationCounts.map(
                           (entry, index) => (
@@ -778,22 +636,29 @@ export default function Dashboard() {
         </div>
 
         {/* Bottom Section - Additional Analytics */}
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="mt-4 md:mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Monthly Trend */}
           <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2 text-primary" />
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-white flex items-center text-base md:text-lg">
+                <TrendingUp className="w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
                 Tendencia Mensual
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {analyticsData?.monthlyData && (
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer
+                  width="100%"
+                  height={180}
+                  className="md:h-[200px]"
+                >
                   <LineChart data={analyticsData.monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="month" tick={{ fill: "#9CA3AF" }} />
-                    <YAxis tick={{ fill: "#9CA3AF" }} />
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                    />
+                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} />
                     <Tooltip />
                     <Line
                       type="monotone"
@@ -807,32 +672,67 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Additional Insights */}
+          {/* Recent Submissions */}
           <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-            <CardHeader>
-              <CardTitle className="text-white">Insights Adicionales</CardTitle>
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-white text-base md:text-lg">
+                Últimas Solicitudes
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4 text-gray-300">
-                <div className="p-3 bg-white/5 rounded-lg">
-                  <p className="text-sm">
-                    Ubicaciones cargadas por el mismo usuario y con
-                    identificadores que permiten generar mapas de calor de
-                    intención.
-                  </p>
-                </div>
-                <div className="p-3 bg-white/5 rounded-lg">
-                  <p className="text-sm">
-                    Coloración se determina por los records sub totales
-                    aplicados a los filtros.
-                  </p>
-                </div>
-                <div className="p-3 bg-white/5 rounded-lg">
-                  <p className="text-sm">
-                    Hacer lista de marcas con modelos y tamaños tentativos de
-                    batería.
-                  </p>
-                </div>
+            <CardContent className="pt-0">
+              <div className="space-y-3 md:space-y-4">
+                {isLoading ? (
+                  // Loading skeletons
+                  Array.from({ length: 5 }, (_, index) => (
+                    <div
+                      key={`skeleton-${index}`}
+                      className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg"
+                    >
+                      <div className="w-8 h-8 bg-white/10 rounded-full animate-pulse"></div>
+                      <div className="flex-1 space-y-1">
+                        <div className="h-3 bg-white/10 rounded animate-pulse w-3/4"></div>
+                        <div className="h-2 bg-white/10 rounded animate-pulse w-1/2"></div>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded animate-pulse w-16"></div>
+                    </div>
+                  ))
+                ) : analyticsData?.recentSubmissions?.length ? (
+                  analyticsData.recentSubmissions.map((submission) => (
+                    <div
+                      key={submission.id}
+                      className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                      <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Car className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium truncate">
+                          {submission.full_name}
+                        </p>
+                        <p className="text-gray-400 text-xs truncate">
+                          {submission.vehicle_type} - {submission.brand_model}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-gray-400 text-xs">
+                          {new Date(submission.created_at).toLocaleDateString(
+                            "es-ES",
+                            {
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 text-sm">
+                      No hay solicitudes recientes
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

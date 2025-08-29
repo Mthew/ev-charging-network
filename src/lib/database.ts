@@ -75,6 +75,8 @@ export interface EVFormSubmission {
   brand_model: string;
   usage_type: string;
   average_kms_per_day: string;
+  preference_connector: string;
+  usual_charging_schedule: string;
 
   // Current Charging Location
   primary_charging_location: string;
@@ -120,6 +122,8 @@ export async function initializeDatabase(): Promise<boolean> {
         brand_model VARCHAR(200) NOT NULL,
         usage_type VARCHAR(100) NOT NULL,
         average_kms_per_day VARCHAR(50) NOT NULL,
+        preference_connector VARCHAR(50) NOT NULL,
+        usual_charging_schedule VARCHAR(50) NOT NULL,
         primary_charging_location VARCHAR(100) NOT NULL,
         charging_address TEXT NOT NULL,
         charging_latitude DECIMAL(10, 8) NOT NULL,
@@ -128,7 +132,7 @@ export async function initializeDatabase(): Promise<boolean> {
         cost_per_km_charged VARCHAR(100) NULL,
         full_name VARCHAR(200) NOT NULL,
         phone VARCHAR(50) NOT NULL,
-        email VARCHAR(200) NOT NULL,
+        email VARCHAR(200) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_vehicle_type (vehicle_type),
@@ -185,6 +189,16 @@ export async function insertFormSubmission(
     connection = await getConnection();
     await connection.beginTransaction();
 
+    // Check for existing email before inserting
+    const [existing] = await connection.execute(
+      "SELECT id FROM ev_form_submissions WHERE email = ?",
+      [submission.email]
+    );
+
+    if (Array.isArray(existing) && existing.length > 0) {
+      throw new Error("El correo electrónico ya está en uso");
+    }
+
     console.log("Inserting form submission:", {
       email: submission.email,
       vehicleType: submission.vehicle_type,
@@ -195,16 +209,18 @@ export async function insertFormSubmission(
     const [result] = await connection.execute(
       `
       INSERT INTO ev_form_submissions (
-        vehicle_type, brand_model, usage_type, average_kms_per_day,
+        vehicle_type, brand_model, usage_type, average_kms_per_day, preference_connector, usual_charging_schedule,
         primary_charging_location, charging_address, charging_latitude, charging_longitude, charger_type,
         cost_per_km_charged, full_name, phone, email
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
         submission.vehicle_type,
         submission.brand_model,
         submission.usage_type,
         submission.average_kms_per_day,
+        submission.preference_connector,
+        submission.usual_charging_schedule,
         submission.primary_charging_location,
         submission.charging_address,
         chargingCoordinates?.lat || null,
@@ -367,6 +383,7 @@ export async function getAnalyticsData(filters: {
       monthlyData,
       totalSubmissionsResult,
       totalLocationsResult,
+      recentSubmissionsResult,
     ] = await Promise.all([
       // Vehicle type distribution
       connection.execute(
@@ -417,13 +434,16 @@ export async function getAnalyticsData(filters: {
          ${whereClause.replace(/(\w+)\s*=/g, "efs.$1 =")}`,
         params
       ),
+      // Get recent submissions (last 5)
+      connection.execute(
+        `SELECT id, full_name, vehicle_type, brand_model, created_at FROM ev_form_submissions ${whereClause} ORDER BY created_at DESC LIMIT 5`,
+        params
+      ),
     ]);
 
     console.log("✅ Retrieved analytics data");
 
-
     const getTotal = (result: Array<{ total: number }>): number =>
-
       Array.isArray(result) &&
       result[0] &&
       typeof result[0] === "object" &&
@@ -444,12 +464,58 @@ export async function getAnalyticsData(filters: {
       totalLocations: getTotal(
         totalLocationsResult[0] as Array<{ total: number }>
       ),
-
+      recentSubmissions: recentSubmissionsResult[0] as Array<{
+        id: number;
+        full_name: string;
+        vehicle_type: string;
+        brand_model: string;
+        created_at: string;
+      }>,
     };
   } catch (error) {
     console.error("❌ Error retrieving analytics data:", error);
     throw new Error(
       `Failed to retrieve analytics: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+}
+
+// Get paginated submissions
+export async function getSubmissions(options: {
+  page: number;
+  limit: number;
+}): Promise<{ submissions: EVFormSubmission[]; total: number }> {
+  let connection: PoolConnection | null = null;
+  const { page, limit } = options;
+  const offset = (page - 1) * limit;
+
+  try {
+    connection = await getConnection();
+
+    const [submissions] = await connection.execute(
+      `SELECT * FROM ev_form_submissions ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    const [totalResult] = await connection.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as total FROM ev_form_submissions`
+    );
+    const total = totalResult[0].total as number;
+
+    return {
+      submissions: submissions as EVFormSubmission[],
+      total: total as number,
+    };
+  } catch (error) {
+    console.error("❌ Error retrieving submissions:", error);
+    throw new Error(
+      `Failed to retrieve submissions: ${
         error instanceof Error ? error.message : "Unknown error"
       }`
     );

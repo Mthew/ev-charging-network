@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import ReCAPTCHA from "react-google-recaptcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -31,8 +34,10 @@ import {
   AVERAGE_KMS_PER_DAY,
   CHARGER_TYPES,
   COST_PER_KWH,
+  PREFERENCE_CONNECTOR,
   PRIMARY_CHARGING_LOCATION,
   USAGE_TYPE,
+  USUAL_CHARGING_SCHEDULE,
   VEHICLE_TYPES,
 } from "@/config/constants";
 
@@ -40,9 +45,12 @@ const formSchema = z.object({
   // Vehicle Information
   vehicleType: z.string().min(1, "Selecciona el tipo de vehículo"),
   brandModel: z.string().min(1, "Ingresa la marca/modelo"),
-  // licensePlate: z.string().optional(),
   usageType: z.string().min(1, "Selecciona el tipo de uso"),
   averageKmsPerDay: z.string().min(1, "Ingresa los kilómetros promedio"),
+  preferenceConnector: z.string().min(1, "Selecciona el conector preferido"),
+  usualChargingSchedule: z
+    .string()
+    .min(1, "Ingresa el horario de carga habitual"),
 
   // Current Charging Location
   primaryChargingLocation: z
@@ -59,7 +67,10 @@ const formSchema = z.object({
   // Contact Information
   fullName: z.string().min(1, "Ingresa tu nombre completo"),
   phone: z.string().min(1, "Ingresa tu teléfono"),
-  email: z.string().email("Ingresa un correo electrónico válido"),
+  email: z.email("Ingresa un correo electrónico válido"),
+  privacyPolicy: z.boolean().refine((val) => val === true, {
+    message: "Debes aceptar la política de privacidad para continuar",
+  }),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -87,6 +98,8 @@ export default function Home() {
       brandModel: "",
       // licensePlate: "",
       usageType: "",
+      preferenceConnector: "",
+      usualChargingSchedule: "",
       averageKmsPerDay: "",
       primaryChargingLocation: "",
       chargingAddress: "",
@@ -97,11 +110,20 @@ export default function Home() {
       fullName: "",
       phone: "",
       email: "",
+      privacyPolicy: false,
     },
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [desiredLocationsError, setDesiredLocationsError] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  useEffect(() => {
+    if (form.formState.isSubmitSuccessful) {
+      recaptchaRef.current?.reset();
+    }
+  }, [form.formState.isSubmitSuccessful]);
 
   const onSubmit = async (data: FormData) => {
     // Validate that at least one desired location has been added
@@ -109,6 +131,11 @@ export default function Home() {
       setDesiredLocationsError(
         "Debes agregar al menos una ubicación deseada para la nueva estación"
       );
+      return;
+    }
+
+    if (!recaptchaToken) {
+      alert("Por favor, verifica que no eres un robot.");
       return;
     }
 
@@ -132,20 +159,22 @@ export default function Home() {
           ...data,
           desiredLocations: desiredLocations,
           currentChargingLocation: currentChargingLocation,
+          recaptchaToken,
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        alert(`¡Formulario enviado exitosamente!
-
-
-📧 Email: ${result.data.email}
-📍 Ubicaciones deseadas: ${result.data.desiredLocationsCount}
-📅 Fecha: ${new Date(result.data.timestamp).toLocaleString("es-CO")}
-
-¡Gracias por ayudarnos a planificar la red de carga para vehículos eléctricos!`);
+        alert(
+          `¡Formulario enviado exitosamente!\n\n\n📧 Email: ${
+            result.data.email
+          }\n📍 Ubicaciones deseadas: ${
+            result.data.desiredLocationsCount
+          }\n📅 Fecha: ${new Date(result.data.timestamp).toLocaleString(
+            "es-CO"
+          )}\n\n¡Gracias por ayudarnos a planificar la red de carga para vehículos eléctricos!`
+        );
 
         form.reset();
         setDesiredLocations([]);
@@ -229,16 +258,7 @@ export default function Home() {
           </div>
           <span className="text-white font-semibold">oasisgroup</span>
         </div>
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:text-primary"
-            onClick={() => window.open("/api-key-setup", "_blank")}
-          >
-            <MapPin className="w-4 h-4 mr-2" />
-            API Setup
-          </Button>
+        <div className="hidden md:flex items-center space-x-4">
           <Button
             variant="ghost"
             size="sm"
@@ -247,361 +267,446 @@ export default function Home() {
             <Phone className="w-4 h-4 mr-2" />
             Contacto
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:text-primary"
-            onClick={() => router.push("/dashboard")}
-          >
-            <User className="w-4 h-4 mr-2" />
-            Dashboard
-          </Button>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
-            ¿Quieres tener un{" "}
-            <span className="text-primary">punto de carga</span> más cerca de
-            ti?
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Parte de los retos en el despliegue de nueva infraestructura, va de
-            la mano de realizar inversiones en nuevas estaciones sin saber qué
-            impacto tendrá en los usuarios que la necesita.
-          </p>
-          <p className="text-lg text-primary font-semibold">
-            ¡Ayúdanos a estar más cerca de tus necesidades!
-          </p>
-
-          {/* API Key Notice */}
-          {(!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-            process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ===
-              "your_google_maps_api_key_here") && (
-            <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg max-w-2xl mx-auto">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <MapPin className="w-5 h-5 text-yellow-400" />
-                <span className="text-yellow-400 font-semibold">
-                  Configure Google Maps API
-                </span>
-              </div>
-              <p className="text-yellow-300 text-sm text-center mb-3">
-                Para activar la funcionalidad completa de mapas y autocompletado
-                de direcciones
+        <div className="text-center mb-12 md:mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div className="md:text-left">
+              <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 md:mb-6 leading-tight">
+                ¿Quieres tener un{" "}
+                <span className="text-primary">punto de carga</span> más cerca
+                de ti?
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-300 mb-6 md:mb-8 max-w-3xl leading-relaxed">
+                Parte de los retos en el despliegue de nueva infraestructura, va
+                de la mano de realizar inversiones en nuevas estaciones sin
+                saber qué impacto tendrá en los usuarios que la necesita.
               </p>
-              <div className="text-center">
-                <Button
-                  onClick={() => window.open("/api-key-setup", "_blank")}
-                  size="sm"
-                  className="bg-yellow-500 hover:bg-yellow-600 text-black"
-                >
-                  Configurar API Key →
-                </Button>
-              </div>
+              <p className="text-md sm:text-lg text-primary font-semibold">
+                ¡Ayúdanos a estar más cerca de tus necesidades!
+              </p>
             </div>
-          )}
+            <div className="">
+              <Image
+                src="/assets/images/hero-electric-car.jpg"
+                alt="Electric Car"
+                width={800}
+                height={600}
+                className="rounded-lg shadow-2xl"
+              />
+            </div>
+          </div>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
             {/* Vehicle Information Section */}
-            <div className="form-section">
-              <div className="flex items-center mb-6">
-                <Car className="w-8 h-8 text-primary mr-3" />
-                <h2 className="section-heading">¿Qué vehículo tienes?</h2>
-              </div>
-              <p className="section-description">
-                Con esta información entenderemos las condiciones técnicas para
-                seleccionar los equipos y características más apropiadas para tu
-                vehículo.
-              </p>
+            <div className="form-section grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              <div className="md:col-span-2">
+                <div className="grid grid-cols-4 md:grid-cols-2 gap-8">
+                  <div className="col-span-4 order-2 md:order-1 md:col-span-1 mb-6">
+                    <Image
+                      src="/assets/images/form-car.jpg"
+                      alt="Car"
+                      width={800}
+                      height={600}
+                      className="rounded-lg shadow-2xl aspect-video object-cover"
+                    />
+                  </div>
+                  <div className="col-span-4 order-1 md:order-2 md:col-span-1">
+                    <div className="flex items-center mb-6">
+                      <Car className="w-8 h-8 text-primary mr-3" />
+                      <h2 className="section-heading">¿Qué vehículo tienes?</h2>
+                    </div>
+                    <p className="section-description">
+                      Con esta información entenderemos las condiciones técnicas
+                      para seleccionar los equipos y características más
+                      apropiadas para tu vehículo.
+                    </p>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="vehicleType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">
-                        Tipo Vehículo
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                  <FormField
+                    control={form.control}
+                    name="vehicleType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Tipo Vehículo
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Ej: SUV" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {VEHICLE_TYPES.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="brandModel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Marca/Modelo
+                        </FormLabel>
                         <FormControl>
-                          <SelectTrigger className="custom-input">
-                            <SelectValue placeholder="Ej: SUV" />
-                          </SelectTrigger>
+                          <Input
+                            {...field}
+                            placeholder="Ej: Renault / Zoe"
+                            className="custom-input"
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {VEHICLE_TYPES.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="scooter">Scooter</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="brandModel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Marca/Modelo</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Ej: Renault / Zoe"
-                          className="custom-input"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* <FormField
-                  control={form.control}
-                  name="licensePlate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Placa</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Ej: KYZ902"
-                          className="custom-input"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                /> */}
-
-                <FormField
-                  control={form.control}
-                  name="usageType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Tipo de Uso</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                  {/* <FormField
+                    control={form.control}
+                    name="licensePlate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">Placa</FormLabel>
                         <FormControl>
-                          <SelectTrigger className="custom-input">
-                            <SelectValue placeholder="Particular" />
-                          </SelectTrigger>
+                          <Input
+                            {...field}
+                            placeholder="Ej: KYZ902"
+                            className="custom-input"
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {USAGE_TYPE.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  /> */}
 
-                <FormField
-                  control={form.control}
-                  name="averageKmsPerDay"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">
-                        Promedio de kilometros por dia
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="custom-input">
-                            <SelectValue placeholder="Hasta 50 Kms/día" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {AVERAGE_KMS_PER_DAY.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="usageType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Tipo de Uso
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Particular" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {USAGE_TYPE.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="averageKmsPerDay"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Promedio de kilometros por dia
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Hasta 50 Kms/día" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {AVERAGE_KMS_PER_DAY.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="preferenceConnector"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Conector de preferencia
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Selecciona un conector" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PREFERENCE_CONNECTOR.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="usualChargingSchedule"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Horario de carga habitual
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Selecciona un horario" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {USUAL_CHARGING_SCHEDULE.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Current Charging Location Section */}
-            <div className="form-section">
-              <div className="flex items-center mb-6">
-                <Zap className="w-8 h-8 text-primary mr-3" />
-                <h2 className="section-heading">
-                  ¿Dónde recargas tu vehículo?
-                </h2>
-              </div>
-              <p className="section-description">
-                Con esta información crearemos un perfil de carga inicial para
-                buscar eficiencia en el costo del kwh y tiempos de recarga.
-              </p>
+            <div className="form-section grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              <div className="md:col-span-2">
+                <div className="grid grid-cols-4 md:grid-cols-2 gap-8 pb-10">
+                  <div className="md:col-span-1 col-span-4">
+                    <div className="flex items-center mb-6">
+                      <Zap className="w-8 h-8 text-primary mr-3" />
+                      <h2 className="section-heading">
+                        ¿Como recargas tu vehículo?
+                      </h2>
+                    </div>
+                    <p className="section-description">
+                      Con esta información crearemos un perfil de carga inicial
+                      para buscar eficiencia en el costo del kwh y tiempos de
+                      recarga.
+                    </p>
+                  </div>
+                  <div className="md:col-span-1 col-span-4">
+                    <Image
+                      src="/assets/images/form-charging-station.jpg"
+                      alt="Charging Station"
+                      width={800}
+                      height={600}
+                      className="rounded-lg shadow-2xl aspect-video object-cover"
+                    />
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="primaryChargingLocation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">
-                        Ubicación donde realizas la mayoría de tus recargas
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                  <FormField
+                    control={form.control}
+                    name="primaryChargingLocation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Ubicación donde realizas la mayoría de tus recargas
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Ej: Casa" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PRIMARY_CHARGING_LOCATION.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="chargingAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">
+                          Ingresa la dirección o sitio en Google Maps
+                        </FormLabel>
                         <FormControl>
-                          <SelectTrigger className="custom-input">
-                            <SelectValue placeholder="Ej: Casa" />
-                          </SelectTrigger>
+                          <GooglePlacesAutocomplete
+                            value={field.value}
+                            onChange={field.onChange}
+                            onPlaceSelect={handleChargingLocationPlaceSelect}
+                            placeholder="Ej: Urbanización Villas del Valle"
+                            className="custom-input"
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {PRIMARY_CHARGING_LOCATION.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="chargingAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">
-                        Ingresa la dirección o sitio en Google Maps
-                      </FormLabel>
-                      <FormControl>
-                        <GooglePlacesAutocomplete
-                          value={field.value}
-                          onChange={field.onChange}
-                          onPlaceSelect={handleChargingLocationPlaceSelect}
-                          placeholder="Ej: Urbanización Villas del Valle"
-                          className="custom-input"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="chargerType"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel className="text-white">
+                          Tipo de Cargador
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Ej: Portátil AC 35kw" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CHARGER_TYPES.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="otro">Otro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="chargerType"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel className="text-white">
-                        Tipo de Cargador
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="custom-input">
-                            <SelectValue placeholder="Ej: Portátil AC 35kw" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {CHARGER_TYPES.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="otro">Otro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="costPerKmCharged"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel className="text-white">
-                        Valor por Km Cargado
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="custom-input">
-                            <SelectValue placeholder="Ej: Portátil AC 35kw" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {COST_PER_KWH.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="otro">Otro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="costPerKmCharged"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel className="text-white">
+                          Valor por Km Cargado
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="custom-input">
+                              <SelectValue placeholder="Ej: Portátil AC 35kw" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {COST_PER_KWH.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="otro">Otro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Desired New Station Location Section */}
             <div className="form-section">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <MapPin className="w-8 h-8 text-primary mr-3" />
-                  <h2 className="section-heading">
-                    ¿Dónde deseas una nueva estación?
-                  </h2>
-                </div>
-                {desiredLocations.length > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-green-400 font-medium">
-                      {desiredLocations.length} ubicación
-                      {desiredLocations.length !== 1 ? "es" : ""} agregada
-                      {desiredLocations.length !== 1 ? "s" : ""}
-                    </span>
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <div className="grid grid-cols-4 md:grid-cols-2 gap-8 pb-10">
+                  <div className="col-span-4 order-2 md:order-1 md:col-span-1 mb-6">
+                    <Image
+                      src="/assets/images/desired-station.png"
+                      alt="Car"
+                      width={800}
+                      height={600}
+                      className="rounded-lg shadow-2xl aspect-video object-cover"
+                    />
                   </div>
-                )}
+                  <div className="col-span-4 order-1 md:order-2 md:col-span-1">
+                    <div className="flex items-center">
+                      <MapPin className="w-8 h-8 text-primary mr-3" />
+                      <h2 className="section-heading">
+                        ¿Dónde deseas una nueva estación?
+                      </h2>
+                    </div>
+                    <p className="section-description">
+                      Con esta información crearemos un plano interactivo para
+                      seleccionar una nueva ubicación para tus necesidades de
+                      recarga.
+                    </p>
+                    {desiredLocations.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-green-400 font-medium">
+                          {desiredLocations.length} ubicación
+                          {desiredLocations.length !== 1 ? "es" : ""} agregada
+                          {desiredLocations.length !== 1 ? "s" : ""}
+                        </span>
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className="section-description">
-                Con esta información crearemos un plano interactivo para
-                seleccionar una nueva ubicación para tus necesidades de recarga.
-              </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-6">
                 <FormField
                   control={form.control}
                   name="newStationIdentifier"
@@ -722,7 +827,7 @@ export default function Home() {
               )}
 
               {/* Interactive Map */}
-              <div className="h-96">
+              <div className="h-64 sm:h-96">
                 <GoogleMaps
                   locations={desiredLocations
                     .filter((loc) => loc.lat && loc.lng)
@@ -741,14 +846,32 @@ export default function Home() {
 
             {/* Contact Information Section */}
             <div className="form-section">
-              <div className="flex items-center mb-6">
-                <User className="w-8 h-8 text-primary mr-3" />
-                <h2 className="section-heading">
-                  ¿Cómo te contactamos cuando instalemos la estación?
-                </h2>
+              <div className="grid grid-cols-4 md:grid-cols-2 gap-8 pb-10">
+                <div className="md:col-span-1 col-span-4">
+                  <div className="flex items-center mb-6">
+                    <User className="w-8 h-8 text-primary mr-3" />
+                    <h2 className="section-heading">
+                      ¿Cómo te contactamos cuando instalemos la estación?
+                    </h2>
+                  </div>
+                  <p className="section-description">
+                    Nos pondremos en contacto contigo para informarte cuando la
+                    estación esté lista para su uso.
+                  </p>
+                </div>
+
+                <div className="md:col-span-1 col-span-4">
+                  <Image
+                    src="/assets/images/park-station.png"
+                    alt="Charging Station"
+                    width={800}
+                    height={600}
+                    className="rounded-lg shadow-2xl aspect-video object-cover"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -811,7 +934,45 @@ export default function Home() {
             </div>
 
             {/* Submit Button */}
-            <div className="text-center">
+            <div className="text-center space-y-4">
+              <FormField
+                control={form.control}
+                name="privacyPolicy"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-white/5">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-white">
+                        Acepto la{" "}
+                        <Link
+                          href="https://oasisgroup.online/politica-de-tratamiento-de-datos-personales/"
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          política de tratamiento de datos personales
+                        </Link>
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={
+                    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
+                    "YOUR_RECAPTCHA_SITE_KEY"
+                  }
+                  onChange={(token) => setRecaptchaToken(token)}
+                  theme="dark"
+                />
+              </div>
               <Button
                 type="submit"
                 size="lg"

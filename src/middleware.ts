@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest, hasRole } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest, hasRole } from "@/lib/auth";
 
 // Define protected routes
 const protectedRoutes: string[] = []; // Dashboard handles its own authentication
@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
   // authentication internally with a better UX (shows login form directly)
 
   // Check if the current path is protected
-  const isProtectedRoute = protectedRoutes.some(route =>
+  const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
   );
 
@@ -25,27 +25,27 @@ export function middleware(request: NextRequest) {
 
   // If no user is authenticated, redirect to login
   if (!user) {
-    const loginUrl = new URL('/', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+    const loginUrl = new URL("/dashboard/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // Check admin-only routes
-  const isAdminOnlyRoute = adminOnlyRoutes.some(route =>
+  const isAdminOnlyRoute = adminOnlyRoutes.some((route) =>
     pathname.startsWith(route)
   );
 
-  if (isAdminOnlyRoute && !hasRole(user, 'admin')) {
+  if (isAdminOnlyRoute && !hasRole(user, "admin")) {
     // Redirect non-admin users to unauthorized page or home
-    const unauthorizedUrl = new URL('/', request.url);
-    unauthorizedUrl.searchParams.set('error', 'unauthorized');
+    const unauthorizedUrl = new URL("/", request.url);
+    unauthorizedUrl.searchParams.set("error", "unauthorized");
     return NextResponse.redirect(unauthorizedUrl);
   }
 
   // Add user info to headers for API routes
   const response = NextResponse.next();
-  response.headers.set('x-user-id', user.id);
-  response.headers.set('x-user-role', user.role);
+  response.headers.set("x-user-id", user.id);
+  response.headers.set("x-user-role", user.role);
 
   return response;
 }
@@ -60,6 +60,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

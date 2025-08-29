@@ -34,10 +34,8 @@ interface GoogleMapsProps {
 // Default center: Medellín, Colombia
 const MEDELLIN_CENTER = { lat: 6.2442, lng: -75.5812 };
 
-
 // Global heatmap layer variable for cleanup
 let heatMapLayer: google.maps.visualization.HeatmapLayer | null = null;
-
 
 export default function GoogleMaps({
   locations = [],
