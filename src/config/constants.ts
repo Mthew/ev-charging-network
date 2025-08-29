@@ -161,3 +161,12 @@ export const MAP_DARK_STYLE = [
     stylers: [{ color: "#3d3d3d" }],
   },
 ];
+
+export const COLORS = [
+  "#3b82f6",
+  "#ef4444",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#06b6d4",
+];

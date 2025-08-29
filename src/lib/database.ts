@@ -132,7 +132,7 @@ export async function initializeDatabase(): Promise<boolean> {
         cost_per_km_charged VARCHAR(100) NULL,
         full_name VARCHAR(200) NOT NULL,
         phone VARCHAR(50) NOT NULL,
-        email VARCHAR(200) NOT NULL,
+        email VARCHAR(200) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_vehicle_type (vehicle_type),
@@ -188,6 +188,16 @@ export async function insertFormSubmission(
   try {
     connection = await getConnection();
     await connection.beginTransaction();
+
+    // Check for existing email before inserting
+    const [existing] = await connection.execute(
+      "SELECT id FROM ev_form_submissions WHERE email = ?",
+      [submission.email]
+    );
+
+    if (Array.isArray(existing) && existing.length > 0) {
+      throw new Error("El correo electrónico ya está en uso");
+    }
 
     console.log("Inserting form submission:", {
       email: submission.email,
@@ -453,6 +463,41 @@ export async function getAnalyticsData(filters: {
     console.error("❌ Error retrieving analytics data:", error);
     throw new Error(
       `Failed to retrieve analytics: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+}
+
+// Get paginated submissions
+export async function getSubmissions(options: { page: number; limit: number }): Promise<{ submissions: EVFormSubmission[], total: number }> {
+  let connection: PoolConnection | null = null;
+  const { page, limit } = options;
+  const offset = (page - 1) * limit;
+
+  try {
+    connection = await getConnection();
+
+    const [submissions] = await connection.execute(
+      `SELECT * FROM ev_form_submissions ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    const [totalResult] = await connection.execute<mysql.RowDataPacket[]>(`SELECT COUNT(*) as total FROM ev_form_submissions`);
+    const total = totalResult[0].total as number;
+
+    return {
+        submissions: submissions as EVFormSubmission[],
+        total: total as number
+    };
+  } catch (error) {
+    console.error("❌ Error retrieving submissions:", error);
+    throw new Error(
+      `Failed to retrieve submissions: ${
         error instanceof Error ? error.message : "Unknown error"
       }`
     );

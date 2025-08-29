@@ -3,10 +3,48 @@ import {
   insertFormSubmission,
   initializeDatabase,
   testConnection,
+  EVFormSubmission,
 } from "@/lib/database";
+
+async function verifyRecaptcha(token: string): Promise<boolean> {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  if (!secretKey) {
+    console.error("RECAPTCHA_SECRET_KEY is not set");
+    return false;
+  }
+
+  const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`;
+
+  try {
+    const response = await fetch(verificationUrl, { method: "POST" });
+    const data = await response.json();
+    return data.success;
+  } catch (error) {
+    console.error("Error verifying ReCaptcha:", error);
+    return false;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json();
+    const { recaptchaToken, ...formData } = body;
+
+    if (!recaptchaToken) {
+      return NextResponse.json(
+        { error: "ReCaptcha token is missing" },
+        { status: 400 }
+      );
+    }
+
+    const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
+    if (!isRecaptchaValid) {
+      return NextResponse.json(
+        { error: "Invalid ReCaptcha token" },
+        { status: 400 }
+      );
+    }
+
     // Test database connection first
     const isConnected = await testConnection();
     if (!isConnected) {
@@ -17,11 +55,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
     console.log("Received form submission:", {
-      email: body.email,
-      vehicleType: body.vehicleType,
-      desiredLocationsCount: body.desiredLocations?.length || 0,
+      email: formData.email,
+      vehicleType: formData.vehicleType,
+      desiredLocationsCount: formData.desiredLocations?.length || 0,
     });
 
     // Extract form data
@@ -30,6 +67,8 @@ export async function POST(request: NextRequest) {
       brandModel,
       usageType,
       averageKmsPerDay,
+      usualChargingSchedule,
+      preferenceConnector,
       primaryChargingLocation,
       chargingAddress,
       chargerType,
@@ -39,7 +78,7 @@ export async function POST(request: NextRequest) {
       email,
       desiredLocations = [],
       currentChargingLocation = {},
-    } = body;
+    } = formData;
 
     // Validate required fields
     const requiredFields = {
@@ -97,10 +136,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare submission data
-    const submission = {
+    const submission: Omit<
+      EVFormSubmission,
+      "id" | "created_at" | "updated_at"
+    > = {
       vehicle_type: vehicleType,
       brand_model: brandModel,
       usage_type: usageType,
+      usual_charging_schedule: usualChargingSchedule,
+      preference_connector: preferenceConnector,
       average_kms_per_day: averageKmsPerDay,
       primary_charging_location: primaryChargingLocation,
       charging_address: chargingAddress,
