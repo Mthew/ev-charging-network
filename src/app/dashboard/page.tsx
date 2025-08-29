@@ -316,6 +316,8 @@ export default function Dashboard() {
     },
   };
 
+  //#endregion
+
   return (
     <div className="min-h-screen gradient-bg">
       {/* Header */}
