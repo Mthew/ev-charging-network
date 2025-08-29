@@ -45,7 +45,6 @@ const formSchema = z.object({
   // Vehicle Information
   vehicleType: z.string().min(1, "Selecciona el tipo de vehículo"),
   brandModel: z.string().min(1, "Ingresa la marca/modelo"),
-  // licensePlate: z.string().optional(),
   usageType: z.string().min(1, "Selecciona el tipo de uso"),
   averageKmsPerDay: z.string().min(1, "Ingresa los kilómetros promedio"),
   preferenceConnector: z.string().min(1, "Selecciona el conector preferido"),

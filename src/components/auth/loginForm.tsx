@@ -12,11 +12,14 @@ import {
 } from "../ui";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
   const [loginError, setLoginError] = useState("");
+
+  const router = useRouter();
 
   const { isLoading: authLoading, login } = useAuth();
 
@@ -41,6 +44,7 @@ export const LoginForm = () => {
       // Authentication successful, analytics will load automatically via useEffect
       // Don't call loadAnalyticsData() here to avoid race condition with cookie setting
       console.log("Login successful, auth state updated");
+      router.push("/dashboard");
     }
   };
   return (
